@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(if [ -d \"agent-os/product\" ])",
+      "Bash(then echo \"Product documentation already exists.\")",
+      "Bash(else echo \"No existing product documentation found.\")",
+      "Bash(fi)",
+      "Bash(mkdir:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
