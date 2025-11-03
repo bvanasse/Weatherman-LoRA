@@ -1,0 +1,232 @@
+# Weatherman-LoRA Training Configuration
+# Based on IMPLEMENTATION_GUIDE.md specifications
+# Optimized for single GPU (H100 80GB or RTX 3090 24GB)
+
+# ============================================================
+# LoRA Configuration
+# ============================================================
+lora:
+  # LoRA rank: Controls adapter capacity (higher = more parameters)
+  # Recommended: 16-32 (start with 16)
+  # Higher ranks capture more complexity but increase memory usage
+  r: 16
+
+  # LoRA alpha: Scaling factor for adapter weights
+  # Recommended: 2x rank (alpha = 2 * r)
+  # Controls the magnitude of LoRA updates
+  lora_alpha: 32
+
+  # LoRA dropout: Regularization to prevent overfitting
+  # Recommended: 0.05-0.1
+  # Higher dropout = more regularization
+  lora_dropout: 0.05
+
+  # Target modules: Which layers to apply LoRA adapters to
+  # These are the attention and MLP projection layers
+  # Covers both Llama and Mistral architectures
+  target_modules:
+    - q_proj      # Query projection (attention)
+    - k_proj      # Key projection (attention)
+    - v_proj      # Value projection (attention)
+    - o_proj      # Output projection (attention)
+    - gate_proj   # Gate projection (MLP)
+    - up_proj     # Up projection (MLP)
+    - down_proj   # Down projection (MLP)
+
+  # Bias handling: Whether to train bias parameters
+  # Options: "none", "all", "lora_only"
+  bias: none
+
+  # Task type: Causal language modeling for text generation
+  task_type: CAUSAL_LM
+
+# ============================================================
+# Quantization Configuration (QLoRA)
+# ============================================================
+quantization:
+  # Load model in 4-bit precision
+  load_in_4bit: true
+
+  # Use double quantization (quantize the quantization constants)
+  # Saves additional memory with minimal quality loss
+  bnb_4bit_use_double_quant: true
+
+  # Quantization type: NF4 (Normal Float 4-bit)
+  # Better than standard 4-bit for LLM weights distribution
+  bnb_4bit_quant_type: nf4
+
+  # Compute dtype: bfloat16 for forward/backward passes
+  # bfloat16 is more stable than float16 for training
+  bnb_4bit_compute_dtype: bfloat16
+
+# ============================================================
+# Training Arguments
+# ============================================================
+training:
+  # Output directory for checkpoints
+  output_dir: ./adapters/weatherman-lora
+
+  # Number of training epochs
+  # Recommended: 2-4 epochs (3 is typical)
+  # More epochs risk overfitting on small datasets
+  num_train_epochs: 3
+
+  # Batch size per GPU device
+  # H100 (80GB): 4-8
+  # RTX 3090 (24GB): 2-4
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
+
+  # Gradient accumulation steps
+  # Effective batch size = batch_size * gradient_accumulation_steps
+  # Recommended effective batch: 64-256
+  gradient_accumulation_steps: 4
+
+  # Learning rate: LoRA uses higher LR than full fine-tuning
+  # Recommended: 1e-4 to 3e-4 (2e-4 is typical)
+  learning_rate: 2.0e-4
+
+  # Learning rate scheduler
+  # Options: "linear", "cosine", "cosine_with_restarts", "polynomial", "constant"
+  # Cosine decay works well for LLM fine-tuning
+  lr_scheduler_type: cosine
+
+  # Warmup ratio: Fraction of steps for learning rate warmup
+  # Recommended: 0.03-0.05 (3-5% of total steps)
+  warmup_ratio: 0.03
+
+  # Weight decay: L2 regularization
+  # Recommended: 0.01-0.1
+  weight_decay: 0.01
+
+  # Max gradient norm for gradient clipping
+  # Prevents exploding gradients
+  max_grad_norm: 0.3
+
+  # Optimizer: Paged AdamW with 8-bit precision
+  # Memory-efficient optimizer for large models
+  optim: paged_adamw_32bit
+
+  # Mixed precision training
+  # bfloat16 is more stable than float16 for LLMs
+  bf16: true
+  fp16: false
+
+  # Logging frequency (steps)
+  logging_steps: 10
+  logging_first_step: true
+
+  # Evaluation strategy
+  # Options: "no", "steps", "epoch"
+  evaluation_strategy: steps
+  eval_steps: 100
+
+  # Save checkpoints every N steps
+  save_steps: 500
+  save_strategy: steps
+
+  # Keep only the best N checkpoints
+  save_total_limit: 3
+
+  # Load best model at end of training
+  load_best_model_at_end: true
+
+  # Metric for best model selection
+  metric_for_best_model: eval_loss
+  greater_is_better: false
+
+  # Memory optimization
+  gradient_checkpointing: true
+
+  # Data loading
+  dataloader_num_workers: 4
+  dataloader_pin_memory: true
+
+  # Disable tqdm progress bars in non-interactive environments
+  disable_tqdm: false
+
+  # Report metrics to W&B (Weights & Biases)
+  report_to: wandb
+
+  # Run name for experiment tracking
+  run_name: weatherman-lora-v1
+
+# ============================================================
+# Model Configuration
+# ============================================================
+model:
+  # Base model identifier (HuggingFace Hub)
+  # Options:
+  #   - meta-llama/Meta-Llama-3.1-8B-Instruct (primary)
+  #   - mistralai/Mistral-7B-Instruct-v0.2 (alternative)
+  model_name_or_path: meta-llama/Meta-Llama-3.1-8B-Instruct
+
+  # Maximum sequence length
+  # Longer sequences use more memory
+  # Recommended: 2048-4096 tokens
+  max_seq_length: 2048
+
+  # Padding strategy: "right" or "left"
+  # Use "right" for training, "left" for generation
+  padding_side: right
+
+  # Truncation: Whether to truncate long sequences
+  truncation: true
+
+# ============================================================
+# Dataset Configuration
+# ============================================================
+dataset:
+  # Training data path (JSONL format)
+  train_file: data/processed/train.jsonl
+
+  # Validation data path (JSONL format)
+  val_file: data/processed/val.jsonl
+
+  # Train/validation split ratio if no validation file
+  val_split_ratio: 0.1
+
+  # Data format: "chat" or "instruction"
+  # Chat format: messages with role/content
+  # Instruction format: instruction/input/output
+  format: chat
+
+# ============================================================
+# System Prompt Configuration
+# ============================================================
+system_prompt:
+  # Default system prompt for training
+  # Steers model toward desired personality
+  default: |
+    You are a witty weather assistant who speaks with the sardonic humor of Mark Twain
+    and the aphoristic wisdom of Benjamin Franklin. When users ask about weather,
+    you provide accurate information with a touch of literary flair and gentle satire.
+
+  # Alternative prompts for different personas
+  twain: |
+    You are a weather assistant channeling Mark Twain's wit. Respond to weather queries
+    with his characteristic humor, exaggeration, and keen observations about human nature.
+
+  franklin: |
+    You are a weather assistant embodying Benjamin Franklin's wisdom. Provide weather
+    information with practical advice and memorable aphorisms in Poor Richard's style.
+
+# ============================================================
+# Notes
+# ============================================================
+# Expected training times (3 epochs, 15K examples):
+#   - H100 (80GB): 3-4 hours
+#   - A100 (40GB): 4-6 hours
+#   - RTX 3090 (24GB): 12-18 hours
+#
+# Memory usage (QLoRA 4-bit):
+#   - Model: ~5-6 GB
+#   - Activations: ~10-15 GB (depends on batch size)
+#   - Optimizer states: ~3-4 GB
+#   - Total: ~20-25 GB (fits on 3090)
+#
+# To adjust for your GPU:
+#   - Reduce per_device_train_batch_size if OOM
+#   - Increase gradient_accumulation_steps to maintain effective batch size
+#   - Reduce max_seq_length if still OOM
+#   - Enable gradient_checkpointing for more memory savings

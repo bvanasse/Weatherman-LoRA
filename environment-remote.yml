@@ -1,0 +1,102 @@
+# Weatherman-LoRA Remote GPU Training Environment
+# For H100/3090 GPU machines (Lambda Labs, RunPod, or home 3090)
+# Optimized for Mistral 7B Instruct QLoRA training
+# Requires: CUDA 12.1+, Python 3.10
+
+name: weatherman-lora
+
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+
+dependencies:
+  # Python version (pinned for compatibility)
+  - python=3.10
+
+  # PyTorch with CUDA 12.1 support
+  # Pin 2.1.0 for stable CUDA integration and compatibility with PEFT/TRL
+  - pytorch=2.1.0
+  - pytorch-cuda=12.1
+  - torchvision=0.16.0
+  - torchaudio=2.1.0
+
+  # CUDA Toolkit (for nvcc and libraries)
+  - cuda-toolkit=12.1
+
+  # Core ML Libraries
+  # Pin versions for reproducibility across Lambda/RunPod/home 3090
+  - pip
+  - pip:
+      # Transformers: HuggingFace model loading and tokenization
+      # Pin 4.36.0 for Mistral 7B Instruct compatibility
+      - transformers==4.36.0
+
+      # PEFT: Parameter-Efficient Fine-Tuning (LoRA)
+      # Pin 0.7.0 for stable LoRA configuration and adapter training
+      - peft==0.7.0
+
+      # TRL: Transformer Reinforcement Learning (SFTTrainer)
+      # Pin 0.7.4 for supervised fine-tuning with chat-format data
+      - trl==0.7.4
+
+      # Accelerate: Distributed training and device management
+      # Pin 0.25.0 for multi-GPU support and gradient accumulation
+      - accelerate==0.25.0
+
+      # bitsandbytes: 4-bit quantization for QLoRA
+      # Pin 0.41.0 for NF4 quantization with double quantization
+      - bitsandbytes==0.41.0
+
+      # Datasets: HuggingFace datasets library
+      # Pin 2.15.0 to match local environment for JSONL compatibility
+      - datasets==2.15.0
+
+      # Flash Attention 2: Optimized attention for H100
+      # Provides 2-4x speedup for long sequences (4096 tokens)
+      # Install with --no-build-isolation to avoid dependency conflicts
+      # Note: This may require manual installation after environment creation
+      # flash-attn>=2.3.0  # Uncomment after base environment is ready
+
+      # Training Monitoring (optional but recommended)
+      # Weights & Biases for experiment tracking
+      - wandb==0.16.1
+
+      # Additional utilities
+      - scipy==1.11.4
+      - scikit-learn==1.3.2
+
+      # HuggingFace Hub CLI for model downloads
+      - huggingface-hub==0.19.4
+
+      # JSON Lines for data loading
+      - jsonlines==4.0.0
+
+      # Evaluation utilities
+      - sentencepiece==0.1.99  # For tokenization
+      - protobuf==3.20.3       # For model serialization
+
+# Notes:
+# - This environment is optimized for single H100 GPU training
+# - Base model: Mistral 7B Instruct v0.2 (mistralai/Mistral-7B-Instruct-v0.2)
+# - QLoRA configuration: 4-bit NF4, double quantization, bfloat16 compute dtype
+# - Expected training time: 3-4 hours for 3 epochs on H100 (15K examples)
+# - Memory requirements: 60-70GB VRAM (80GB H100 recommended)
+# - LoRA parameters: rank=16, alpha=32, dropout=0.05
+# - Target modules: q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj
+# - Sequence length: 4096 tokens with Flash Attention 2
+# - Batch size: 4, gradient accumulation: 4 (effective batch 16)
+#
+# Flash Attention 2 Installation:
+# After creating this environment, install Flash Attention 2 manually:
+#   pip install flash-attn --no-build-isolation
+#
+# Verify installation:
+#   python -c "import flash_attn; print(flash_attn.__version__)"
+#
+# For H100-specific optimizations:
+# - Flash Attention 2 provides O(N) memory complexity vs O(N^2)
+# - Enables efficient 4096 token sequence length training
+# - bfloat16 mixed precision natively accelerated on H100
+# - Gradient checkpointing trades 20% speed for 30-40% memory savings

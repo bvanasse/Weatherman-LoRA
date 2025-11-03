@@ -1,0 +1,261 @@
+# Weatherman-LoRA Training Configuration - Mac M4
+# Optimized for Mac M4 with MPS backend (32GB unified memory)
+# Base Model: Mistral 7B Instruct v0.2
+# Expected Training Time: 8-12 hours for 3 epochs (15K examples)
+# Expected Memory Usage: ~24-28GB unified memory
+
+# ============================================================
+# LoRA Configuration
+# ============================================================
+lora:
+  # LoRA rank: Controls adapter capacity (higher = more parameters)
+  # Set to 16 for balanced capacity and memory efficiency
+  # Same as H100 config for consistent adapter quality
+  r: 16
+
+  # LoRA alpha: Scaling factor for adapter weights
+  # Set to 2x rank (alpha = 2 * r) for stable training
+  # Same as H100 config for reproducible results
+  lora_alpha: 32
+
+  # LoRA dropout: Regularization to prevent overfitting
+  # Set to 0.05 for minimal regularization with this dataset size
+  # Same as H100 config for consistency
+  lora_dropout: 0.05
+
+  # Target modules: All 7 projection layers for maximum adaptation
+  # Covers attention (q/k/v/o) and MLP (gate/up/down) modules
+  # Identical to H100 config for equivalent adapter capabilities
+  target_modules:
+    - q_proj      # Query projection (attention)
+    - k_proj      # Key projection (attention)
+    - v_proj      # Value projection (attention)
+    - o_proj      # Output projection (attention)
+    - gate_proj   # Gate projection (MLP)
+    - up_proj     # Up projection (MLP)
+    - down_proj   # Down projection (MLP)
+
+  # Bias handling: No bias parameters trained
+  bias: none
+
+  # Task type: Causal language modeling for text generation
+  task_type: CAUSAL_LM
+
+# ============================================================
+# Quantization Configuration (QLoRA)
+# ============================================================
+quantization:
+  # Load model in 4-bit precision for memory efficiency
+  # Critical for fitting in 32GB unified memory
+  load_in_4bit: true
+
+  # Use double quantization (quantize the quantization constants)
+  # Saves additional ~1-2GB memory with minimal quality loss
+  bnb_4bit_use_double_quant: true
+
+  # Quantization type: NF4 (Normal Float 4-bit)
+  # Better suited for LLM weights distribution than standard 4-bit
+  bnb_4bit_quant_type: nf4
+
+  # Compute dtype: bfloat16 for forward/backward passes
+  # MPS backend supports bfloat16, more stable than float16
+  bnb_4bit_compute_dtype: bfloat16
+
+# ============================================================
+# Training Arguments
+# ============================================================
+training:
+  # Output directory for checkpoints and adapters
+  output_dir: ./adapters/weatherman-lora-m4
+
+  # Number of training epochs
+  # Set to 3 for balanced training without overfitting
+  # Same as H100 config for consistency
+  num_train_epochs: 3
+
+  # Batch size per device
+  # M4 (32GB unified) supports 1-2 with 2048 sequence length
+  # Set to 1 for conservative memory usage (~24-28GB peak)
+  # Increase to 2 if experiencing no OOM errors
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+
+  # Gradient accumulation steps
+  # Effective batch size = 1 * 16 = 16
+  # Same effective batch as H100 (4 * 4 = 16) for comparable training
+  # Increase to 16 if using batch_size 1 to maintain gradient signal
+  gradient_accumulation_steps: 16
+
+  # Learning rate: LoRA uses higher LR than full fine-tuning
+  # Set to 2e-4 as proven optimal for LoRA training
+  # Same as H100 config for consistent hyperparameters
+  learning_rate: 2.0e-4
+
+  # Learning rate scheduler: Cosine decay with warmup
+  # Gradually reduces LR for stable convergence
+  lr_scheduler_type: cosine
+
+  # Warmup ratio: 3% of total steps for learning rate warmup
+  # Prevents training instability at start
+  warmup_ratio: 0.03
+
+  # Weight decay: L2 regularization
+  # Set to 0.01 for mild regularization
+  weight_decay: 0.01
+
+  # Max gradient norm for gradient clipping
+  # Prevents exploding gradients during training
+  max_grad_norm: 0.3
+
+  # Optimizer: Paged AdamW with 32-bit precision
+  # Memory-efficient optimizer that pages optimizer states
+  optim: paged_adamw_32bit
+
+  # Mixed precision training
+  # bfloat16 supported by MPS backend for mixed precision
+  # Note: MPS performance may vary compared to CUDA
+  bf16: true
+  fp16: false
+
+  # Logging frequency (steps)
+  logging_steps: 10
+  logging_first_step: true
+
+  # Evaluation strategy
+  # Evaluate every 100 steps to monitor overfitting
+  evaluation_strategy: steps
+  eval_steps: 100
+
+  # Save checkpoints every 500 steps
+  # Balance between recovery capability and disk usage
+  save_steps: 500
+  save_strategy: steps
+
+  # Keep only the best 3 checkpoints to save disk space
+  save_total_limit: 3
+
+  # Load best model at end of training based on eval_loss
+  load_best_model_at_end: true
+  metric_for_best_model: eval_loss
+  greater_is_better: false
+
+  # Memory optimization: Gradient checkpointing
+  # Trades ~20% slower training for ~30-40% memory savings
+  # Essential for fitting in 32GB unified memory
+  gradient_checkpointing: true
+
+  # Data loading optimization
+  # Reduce workers on Mac M4 to avoid memory pressure
+  dataloader_num_workers: 2
+  dataloader_pin_memory: false
+
+  # Progress bars enabled for interactive training
+  disable_tqdm: false
+
+  # Report metrics to Weights & Biases
+  report_to: wandb
+
+  # Run name for experiment tracking
+  # Descriptive name includes model, platform, and sequence length
+  run_name: weatherman-mistral7b-m4-2048
+
+# ============================================================
+# Model Configuration
+# ============================================================
+model:
+  # Base model: Mistral 7B Instruct v0.2
+  # Instruction-tuned variant for better chat format performance
+  # Same as H100 config for reproducible results
+  model_name_or_path: mistralai/Mistral-7B-Instruct-v0.2
+
+  # Maximum sequence length: 2048 tokens
+  # Reduced from H100's 4096 due to 32GB unified memory constraint
+  # 2048 tokens uses ~half the activation memory of 4096
+  # Note: Flash Attention 2 not available on MPS backend
+  max_seq_length: 2048
+
+  # Padding strategy: Right padding for training
+  # Left padding used only for generation/inference
+  padding_side: right
+
+  # Truncation: Truncate sequences longer than max_seq_length
+  truncation: true
+
+# ============================================================
+# Dataset Configuration
+# ============================================================
+dataset:
+  # Training data path (JSONL format with chat messages)
+  train_file: data/processed/train.jsonl
+
+  # Validation data path (JSONL format with chat messages)
+  val_file: data/processed/val.jsonl
+
+  # Train/validation split ratio if no validation file provided
+  val_split_ratio: 0.1
+
+  # Data format: Chat format with role/content messages
+  # Compatible with Mistral Instruct chat template
+  format: chat
+
+# ============================================================
+# System Prompt Configuration
+# ============================================================
+system_prompt:
+  # Default system prompt for Weatherman personality
+  default: |
+    You are a witty weather assistant who speaks with the sardonic humor of Mark Twain
+    and the aphoristic wisdom of Benjamin Franklin. When users ask about weather,
+    you provide accurate information with a touch of literary flair and gentle satire.
+
+  # Alternative prompts for different personas
+  twain: |
+    You are a weather assistant channeling Mark Twain's wit. Respond to weather queries
+    with his characteristic humor, exaggeration, and keen observations about human nature.
+
+  franklin: |
+    You are a weather assistant embodying Benjamin Franklin's wisdom. Provide weather
+    information with practical advice and memorable aphorisms in Poor Richard's style.
+
+# ============================================================
+# Platform-Specific Notes: Mac M4 with MPS
+# ============================================================
+# MPS Backend: PyTorch Metal Performance Shaders for M4 acceleration
+#   - Provides GPU acceleration on Apple Silicon
+#   - Performance 2-3x slower than H100 due to memory bandwidth constraints
+#   - Unified memory shared between CPU and GPU (32GB total)
+#   - No Flash Attention 2 support (CUDA-only feature)
+#
+# Flash Attention 2: NOT AVAILABLE on MPS
+#   - Flash Attention 2 is CUDA-specific and not supported on MPS backend
+#   - Standard attention mechanism used (O(N^2) memory complexity)
+#   - This is why max_seq_length is reduced to 2048 (vs 4096 on H100)
+#
+# Expected Training Time: 8-12 hours for 3 epochs on 15K examples
+#   - ~2.5-4 hours per epoch (2-3x slower than H100)
+#   - ~150-200 examples per minute with batch size 1
+#   - Total training steps: ~45,000 steps (15K examples / effective batch 16 * 3 epochs)
+#   - Slower due to: smaller batch size, no Flash Attention, MPS vs CUDA
+#
+# Expected Memory Usage: ~24-28GB unified memory peak
+#   - Model (4-bit): ~5-6GB
+#   - Activations (2048 seq, batch 1): ~12-15GB
+#   - Optimizer states: ~3-4GB
+#   - Gradients and intermediates: ~4-6GB
+#   - Peak during backward pass: ~24-28GB
+#   - System overhead: ~4-8GB (macOS, background apps)
+#
+# Troubleshooting OOM Errors:
+#   1. Close all unnecessary applications to free unified memory
+#   2. Reduce per_device_train_batch_size to 1 (already minimum)
+#   3. Increase gradient_accumulation_steps to 16 (already set)
+#   4. Reduce max_seq_length to 1024 if still OOM (halves activation memory)
+#   5. Verify gradient_checkpointing is enabled (already true)
+#   6. Monitor Activity Monitor for memory pressure during training
+#   7. Consider using smaller LoRA rank (r=8) if persistent OOM
+#
+# Performance Tips:
+#   - Train overnight or during off-hours due to longer training time
+#   - Disable auto-sleep and screen saver to prevent interruptions
+#   - Use wandb for remote monitoring without keeping terminal open
+#   - Consider using screen or tmux to keep training running if SSH

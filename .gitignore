@@ -1,0 +1,68 @@
+# Weatherman-LoRA .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environments
+.venv-local/
+.venv-remote/
+venv/
+ENV/
+env/
+
+# Data directories (keep structure, ignore contents)
+data/raw/*
+data/processed/*
+data/synthetic/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/synthetic/.gitkeep
+
+# Model files (large files)
+models/*
+!models/.gitkeep
+!models/README.md
+
+# Adapter checkpoints
+adapters/*
+!adapters/.gitkeep
+!adapters/README.md
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log
+logs/
+
+# Weights & Biases
+wandb/
+
+# HuggingFace cache
+.cache/
+huggingface/
+
+# Environment files
+.env
+.env.local

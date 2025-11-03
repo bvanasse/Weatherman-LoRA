@@ -1,0 +1,58 @@
+{
+  "books": [
+    {
+      "author": "Mark Twain",
+      "author_id": "twain",
+      "book_id": 74,
+      "title": "The Adventures of Tom Sawyer",
+      "slug": "tom_sawyer",
+      "publication_year": 1876,
+      "genre_tags": ["humor", "satire", "adventure"]
+    },
+    {
+      "author": "Mark Twain",
+      "author_id": "twain",
+      "book_id": 76,
+      "title": "Adventures of Huckleberry Finn",
+      "slug": "huckleberry_finn",
+      "publication_year": 1884,
+      "genre_tags": ["humor", "satire", "adventure"]
+    },
+    {
+      "author": "Mark Twain",
+      "author_id": "twain",
+      "book_id": 86,
+      "title": "A Connecticut Yankee in King Arthur's Court",
+      "slug": "connecticut_yankee",
+      "publication_year": 1889,
+      "genre_tags": ["humor", "satire", "adventure"]
+    },
+    {
+      "author": "Mark Twain",
+      "author_id": "twain",
+      "book_id": 245,
+      "title": "Life on the Mississippi",
+      "slug": "life_on_mississippi",
+      "publication_year": 1883,
+      "genre_tags": ["humor", "autobiography", "adventure"]
+    },
+    {
+      "author": "Benjamin Franklin",
+      "author_id": "franklin",
+      "book_id": 148,
+      "title": "The Autobiography of Benjamin Franklin",
+      "slug": "autobiography",
+      "publication_year": 1793,
+      "genre_tags": ["autobiography", "wisdom"]
+    },
+    {
+      "author": "Benjamin Franklin",
+      "author_id": "franklin",
+      "book_id": 57795,
+      "title": "Poor Richard's Almanack",
+      "slug": "poor_richards",
+      "publication_year": 1732,
+      "genre_tags": ["wisdom", "humor"]
+    }
+  ]
+}

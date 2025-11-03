@@ -1,0 +1,65 @@
+{
+  "_comment": "Data Normalization & Deduplication Pipeline Configuration",
+  "_description": "Configuration for text processing, deduplication, and quality filtering",
+
+  "normalization": {
+    "_comment": "Unicode normalization settings",
+    "form": "NFC",
+    "_form_description": "NFC (Canonical Decomposition + Composition) preserves semantic distinctions in literary texts"
+  },
+
+  "deduplication": {
+    "_comment": "MinHash/LSH deduplication settings",
+    "threshold": 0.8,
+    "_threshold_description": "Jaccard similarity threshold - items with similarity >= 0.8 are considered duplicates",
+
+    "num_perm": 128,
+    "_num_perm_description": "Number of permutations for MinHash - higher values increase accuracy but slow processing"
+  },
+
+  "language_filter": {
+    "_comment": "Language detection and filtering",
+    "target_language": "en",
+    "_target_language_description": "Only keep English content (ISO 639-1 code)",
+
+    "confidence_threshold": 0.7,
+    "_confidence_threshold_description": "Minimum confidence for language detection (0.0-1.0)"
+  },
+
+  "safety_filter": {
+    "_comment": "OpenAI moderation API settings",
+    "enabled": true,
+    "_enabled_description": "Set to false to skip safety filtering (e.g., during testing)",
+
+    "batch_size": 20,
+    "_batch_size_description": "Number of texts to check per API batch call",
+
+    "retry": {
+      "max_attempts": 3,
+      "backoff_factor": 2,
+      "_description": "Exponential backoff: wait 1s, 2s, 4s between retries"
+    }
+  },
+
+  "quality": {
+    "_comment": "Basic quality checks",
+    "min_length": 10,
+    "_min_length_description": "Minimum character length for valid text",
+
+    "max_length": 10000,
+    "_max_length_description": "Maximum character length (sanity check)"
+  },
+
+  "processing": {
+    "_comment": "Pipeline processing settings",
+    "chunk_size": 1000,
+    "_chunk_size_description": "Number of items to process in memory at once"
+  },
+
+  "metadata": {
+    "_comment": "Pipeline metadata to add to output",
+    "normalization_version": "1.0",
+    "pipeline_version": "1.0",
+    "filters_applied": ["unicode_normalization", "deduplication", "language_filter", "safety_filter"]
+  }
+}

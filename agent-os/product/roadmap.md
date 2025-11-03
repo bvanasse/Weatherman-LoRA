@@ -1,18 +1,18 @@
 # Product Roadmap
 
-1. [ ] Environment Setup & Data Infrastructure — Set up Python environment with TRL/PEFT/transformers, create project directory structure, install GPU dependencies (torch/CUDA), and configure data storage paths for raw/processed datasets `XS`
+1. [x] Environment Setup & Data Infrastructure — Set up Python environment with TRL/PEFT/transformers, create project directory structure, install GPU dependencies (torch/CUDA), and configure data storage paths for raw/processed datasets `XS`
 
-2. [ ] Literary Corpus Collection — Download and parse public domain texts from Project Gutenberg (Mark Twain: Tom Sawyer, Huck Finn, Connecticut Yankee, Life on Mississippi; Benjamin Franklin: Autobiography, Poor Richard's Almanack), extract 3,000-5,000 relevant passages with weather/humor mentions, and preserve source metadata `S`
+2. [x] Literary Corpus Collection — Download and parse public domain texts from Project Gutenberg (Mark Twain: Tom Sawyer, Huck Finn, Connecticut Yankee, Life on Mississippi; Benjamin Franklin: Autobiography, Poor Richard's Almanack), extract 3,000-5,000 relevant passages with weather/humor mentions, and preserve source metadata `S`
 
-3. [ ] Reddit Humor Dataset Processing — Process existing `data_sources/reddit-theonion/` CSVs to extract weather-related posts from r/TheOnion and r/nottheonion, filter by weather keywords, clean HTML/metadata artifacts, and create 2,000-4,000 labeled humor examples `S`
+3. [x] Reddit Humor Dataset Processing — Process existing `data_sources/reddit-theonion/` CSVs to extract weather-related posts from r/TheOnion and r/nottheonion, filter by weather keywords, clean HTML/metadata artifacts, and create 2,000-4,000 labeled humor examples `S`
 
-4. [ ] Data Normalization & Deduplication Pipeline — Implement cleaning pipeline with unicode normalization, MinHash/LSH deduplication (threshold 0.8), language filtering (English only), safety filters (toxicity/NSFW removal), and generate quality statistics report `M`
+4. [x] Data Normalization & Deduplication Pipeline — Implement cleaning pipeline with unicode normalization, MinHash/LSH deduplication (threshold 0.8), language filtering (English only), safety filters (toxicity/NSFW removal), and generate quality statistics report `M`
 
-5. [ ] Instructionalization & Tagging — Convert raw text into chat-format JSONL with system/user/assistant roles, apply persona tags (twain/franklin/neutral), tone tags (humorous/satirical/didactic), domain tags (weather/general), and create balanced train/validation splits (90/10) `M`
+5. [x] Instructionalization & Tagging — Convert raw text into chat-format JSONL with system/user/assistant roles, apply persona tags (twain/franklin/neutral), tone tags (humorous/satirical/didactic), domain tags (weather/general), and create balanced train/validation splits (90/10) `M`
 
-6. [ ] Synthetic Tool-Use Data Generation — Create 1,000-3,000 OpenAI-style function calling examples with weather API tool schema, generate multi-turn conversations including tool calls/responses, cover success cases and error handling, and validate JSON schema correctness `M`
+6. [x] Synthetic Tool-Use Data Generation — Create 1,000-3,000 OpenAI-style function calling examples with weather API tool schema, generate multi-turn conversations including tool calls/responses, cover success cases and error handling, and validate JSON schema correctness `M`
 
-7. [ ] QLoRA Training Configuration — Configure base model (Llama 3.1 8B Instruct or Mistral 7B Instruct), set LoRA hyperparameters (r=16, alpha=32, dropout=0.05, target modules: q/k/v/o projections), optimize for single H100 with 4-bit quantization, gradient checkpointing, and flash attention `S`
+7. [x] QLoRA Training Configuration — Configure base model (Llama 3.1 8B Instruct or Mistral 7B Instruct), set LoRA hyperparameters (r=16, alpha=32, dropout=0.05, target modules: q/k/v/o projections), optimize for single H100 with 4-bit quantization, gradient checkpointing, and flash attention `S`
 
 8. [ ] Style-Only LoRA Training — Train first adapter on literary style and humor datasets (8,000-12,000 examples) for 1-2 epochs with learning rate 2e-4, cosine decay, and early stopping on validation loss, completing in 2-3 hours on H100 `M`
 

@@ -1,0 +1,181 @@
+{
+  "_comment": "Weatherman-LoRA Path Configuration",
+  "_description": "Defines data and model paths for local and remote environments",
+
+  "data": {
+    "_comment": "Data directories - same structure on local and remote",
+
+    "raw": "data/raw",
+    "_raw_description": "Original downloads (Gutenberg texts, Reddit CSVs)",
+
+    "processed": "data/processed",
+    "_processed_description": "Cleaned, deduplicated JSONL datasets",
+
+    "synthetic": "data/synthetic",
+    "_synthetic_description": "Generated tool-use examples",
+
+    "sources": {
+      "reddit": "data_sources/reddit-theonion/data",
+      "_reddit_description": "Existing Reddit humor dataset CSVs",
+
+      "gutenberg": "data/processed/gutenberg_passages.json",
+      "_gutenberg_description": "Processed Project Gutenberg passages"
+    },
+
+    "pipeline": {
+      "_comment": "Normalization pipeline input/output paths",
+
+      "output": "data/processed/training_data_clean.jsonl",
+      "_output_description": "Final cleaned and deduplicated training data",
+
+      "stats_json": "data/processed/pipeline_stats_{timestamp}.json",
+      "_stats_json_description": "JSON statistics report with timestamp",
+
+      "stats_md": "data/processed/pipeline_stats_{timestamp}.md",
+      "_stats_md_description": "Markdown statistics report with timestamp"
+    }
+  },
+
+  "models": {
+    "_comment": "Model storage and cache directories",
+
+    "dir": "models",
+    "_dir_description": "Base model storage (~15GB per model)",
+
+    "cache": {
+      "_comment": "HuggingFace cache directory configuration",
+      "enabled": true,
+      "path": "models/.cache",
+      "_description": "Custom cache location to keep models organized"
+    },
+
+    "base_models": {
+      "llama": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+      "mistral": "mistralai/Mistral-7B-Instruct-v0.2",
+      "_description": "HuggingFace model identifiers"
+    }
+  },
+
+  "adapters": {
+    "_comment": "LoRA adapter weights and checkpoints",
+
+    "dir": "adapters",
+    "_dir_description": "Training outputs stored here",
+
+    "output": "adapters/weatherman-lora",
+    "_output_description": "Default output directory for training runs",
+
+    "checkpoints": {
+      "enabled": true,
+      "save_steps": 500,
+      "keep_best": 3,
+      "_description": "Checkpoint configuration"
+    }
+  },
+
+  "scripts": {
+    "_comment": "Python scripts and utilities",
+    "dir": "scripts"
+  },
+
+  "configs": {
+    "_comment": "Configuration files",
+    "dir": "configs",
+
+    "training": "configs/training_config.yaml",
+    "paths": "configs/paths_config.json",
+    "pipeline": "configs/pipeline_config.json"
+  },
+
+  "docs": {
+    "_comment": "Documentation files",
+    "dir": "docs",
+
+    "setup_guide": "docs/SETUP_GUIDE.md",
+    "data_sync": "docs/DATA_SYNC.md",
+    "model_download": "docs/MODEL_DOWNLOAD.md"
+  },
+
+  "references": {
+    "_comment": "Implementation guides and research",
+    "dir": "references",
+    "implementation_guide": "references/IMPLEMENTATION_GUIDE.md"
+  },
+
+  "environment": {
+    "_comment": "Environment-specific settings",
+
+    "local": {
+      "name": "local",
+      "type": "mac_m4",
+      "venv": ".venv-local",
+      "requirements": "requirements-local.txt",
+      "_description": "Mac M4 data processing environment"
+    },
+
+    "remote": {
+      "name": "remote",
+      "type": "gpu_training",
+      "conda_env": "weatherman-lora",
+      "environment_file": "environment-remote.yml",
+      "_description": "H100/3090 GPU training environment"
+    }
+  },
+
+  "sync": {
+    "_comment": "Data synchronization settings",
+
+    "source": {
+      "host": "localhost",
+      "path": "data/processed/",
+      "_description": "Local source for processed data"
+    },
+
+    "destination": {
+      "host": "TODO_REMOTE_HOST",
+      "path": "TODO_REMOTE_PATH/weatherman-lora/data/processed/",
+      "_description": "Remote destination (Lambda/RunPod/home 3090)"
+    },
+
+    "methods": {
+      "rsync": {
+        "enabled": true,
+        "flags": "-avz --progress",
+        "_description": "Preferred method for syncing directories"
+      },
+      "scp": {
+        "enabled": true,
+        "_description": "Alternative for single files"
+      }
+    }
+  },
+
+  "logging": {
+    "_comment": "Logging and monitoring configuration",
+
+    "wandb": {
+      "enabled": true,
+      "project": "weatherman-lora",
+      "entity": null,
+      "_entity_description": "Set to your W&B username or team name"
+    },
+
+    "log_dir": "logs",
+    "log_level": "INFO"
+  },
+
+  "storage": {
+    "_comment": "Storage requirements and checks",
+
+    "minimum_gb": 20,
+    "recommended_gb": 30,
+
+    "breakdown": {
+      "raw_data_mb": "150-300",
+      "processed_jsonl_mb": "500-1000",
+      "base_model_gb": 15,
+      "checkpoints_gb": "0.5-2",
+      "buffer_gb": "10-15"
+    }
+  }
+}

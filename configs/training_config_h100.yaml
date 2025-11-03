@@ -1,0 +1,235 @@
+# Weatherman-LoRA Training Configuration - H100 GPU
+# Optimized for single H100 GPU (80GB VRAM)
+# Base Model: Mistral 7B Instruct v0.2
+# Expected Training Time: 3-4 hours for 3 epochs (15K examples)
+# Expected Memory Usage: ~60-70GB VRAM
+
+# ============================================================
+# LoRA Configuration
+# ============================================================
+lora:
+  # LoRA rank: Controls adapter capacity (higher = more parameters)
+  # Set to 16 for balanced capacity and memory efficiency
+  r: 16
+
+  # LoRA alpha: Scaling factor for adapter weights
+  # Set to 2x rank (alpha = 2 * r) for stable training
+  lora_alpha: 32
+
+  # LoRA dropout: Regularization to prevent overfitting
+  # Set to 0.05 for minimal regularization with this dataset size
+  lora_dropout: 0.05
+
+  # Target modules: All 7 projection layers for maximum adaptation
+  # Covers attention (q/k/v/o) and MLP (gate/up/down) modules
+  # Provides comprehensive model adaptation for style transfer
+  target_modules:
+    - q_proj      # Query projection (attention)
+    - k_proj      # Key projection (attention)
+    - v_proj      # Value projection (attention)
+    - o_proj      # Output projection (attention)
+    - gate_proj   # Gate projection (MLP)
+    - up_proj     # Up projection (MLP)
+    - down_proj   # Down projection (MLP)
+
+  # Bias handling: No bias parameters trained
+  bias: none
+
+  # Task type: Causal language modeling for text generation
+  task_type: CAUSAL_LM
+
+# ============================================================
+# Quantization Configuration (QLoRA)
+# ============================================================
+quantization:
+  # Load model in 4-bit precision for memory efficiency
+  # Reduces model footprint from ~28GB to ~5-6GB
+  load_in_4bit: true
+
+  # Use double quantization (quantize the quantization constants)
+  # Saves additional ~1-2GB memory with minimal quality loss
+  bnb_4bit_use_double_quant: true
+
+  # Quantization type: NF4 (Normal Float 4-bit)
+  # Better suited for LLM weights distribution than standard 4-bit
+  bnb_4bit_quant_type: nf4
+
+  # Compute dtype: bfloat16 for forward/backward passes
+  # H100 has native bfloat16 acceleration, more stable than float16
+  bnb_4bit_compute_dtype: bfloat16
+
+# ============================================================
+# Training Arguments
+# ============================================================
+training:
+  # Output directory for checkpoints and adapters
+  output_dir: ./adapters/weatherman-lora-h100
+
+  # Number of training epochs
+  # Set to 3 for balanced training without overfitting
+  num_train_epochs: 3
+
+  # Batch size per GPU device
+  # H100 (80GB) supports 4-8 with 4096 sequence length
+  # Set to 4 for stable memory usage (~60-70GB peak)
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
+
+  # Gradient accumulation steps
+  # Effective batch size = 4 * 4 = 16
+  # Maintains good gradient signal while fitting in memory
+  gradient_accumulation_steps: 4
+
+  # Learning rate: LoRA uses higher LR than full fine-tuning
+  # Set to 2e-4 as proven optimal for LoRA training
+  learning_rate: 2.0e-4
+
+  # Learning rate scheduler: Cosine decay with warmup
+  # Gradually reduces LR for stable convergence
+  lr_scheduler_type: cosine
+
+  # Warmup ratio: 3% of total steps for learning rate warmup
+  # Prevents training instability at start
+  warmup_ratio: 0.03
+
+  # Weight decay: L2 regularization
+  # Set to 0.01 for mild regularization
+  weight_decay: 0.01
+
+  # Max gradient norm for gradient clipping
+  # Prevents exploding gradients during training
+  max_grad_norm: 0.3
+
+  # Optimizer: Paged AdamW with 32-bit precision
+  # Memory-efficient optimizer that pages optimizer states
+  optim: paged_adamw_32bit
+
+  # Mixed precision training
+  # bfloat16 is more stable than float16 for LLMs
+  # H100 has native hardware acceleration for bfloat16
+  bf16: true
+  fp16: false
+
+  # Logging frequency (steps)
+  logging_steps: 10
+  logging_first_step: true
+
+  # Evaluation strategy
+  # Evaluate every 100 steps to monitor overfitting
+  evaluation_strategy: steps
+  eval_steps: 100
+
+  # Save checkpoints every 500 steps
+  # Balance between recovery capability and disk usage
+  save_steps: 500
+  save_strategy: steps
+
+  # Keep only the best 3 checkpoints to save disk space
+  save_total_limit: 3
+
+  # Load best model at end of training based on eval_loss
+  load_best_model_at_end: true
+  metric_for_best_model: eval_loss
+  greater_is_better: false
+
+  # Memory optimization: Gradient checkpointing
+  # Trades ~20% slower training for ~30-40% memory savings
+  # Essential for 4096 sequence length on H100
+  gradient_checkpointing: true
+
+  # Data loading optimization
+  dataloader_num_workers: 4
+  dataloader_pin_memory: true
+
+  # Progress bars enabled for interactive training
+  disable_tqdm: false
+
+  # Report metrics to Weights & Biases
+  report_to: wandb
+
+  # Run name for experiment tracking
+  # Descriptive name includes model, platform, and sequence length
+  run_name: weatherman-mistral7b-h100-4096
+
+# ============================================================
+# Model Configuration
+# ============================================================
+model:
+  # Base model: Mistral 7B Instruct v0.2
+  # Instruction-tuned variant for better chat format performance
+  model_name_or_path: mistralai/Mistral-7B-Instruct-v0.2
+
+  # Maximum sequence length: 4096 tokens
+  # H100 with Flash Attention 2 supports long sequences efficiently
+  # Flash Attention 2 provides O(N) memory complexity vs O(N^2)
+  max_seq_length: 4096
+
+  # Padding strategy: Right padding for training
+  # Left padding used only for generation/inference
+  padding_side: right
+
+  # Truncation: Truncate sequences longer than max_seq_length
+  truncation: true
+
+# ============================================================
+# Dataset Configuration
+# ============================================================
+dataset:
+  # Training data path (JSONL format with chat messages)
+  train_file: data/processed/train.jsonl
+
+  # Validation data path (JSONL format with chat messages)
+  val_file: data/processed/val.jsonl
+
+  # Train/validation split ratio if no validation file provided
+  val_split_ratio: 0.1
+
+  # Data format: Chat format with role/content messages
+  # Compatible with Mistral Instruct chat template
+  format: chat
+
+# ============================================================
+# System Prompt Configuration
+# ============================================================
+system_prompt:
+  # Default system prompt for Weatherman personality
+  default: |
+    You are a witty weather assistant who speaks with the sardonic humor of Mark Twain
+    and the aphoristic wisdom of Benjamin Franklin. When users ask about weather,
+    you provide accurate information with a touch of literary flair and gentle satire.
+
+  # Alternative prompts for different personas
+  twain: |
+    You are a weather assistant channeling Mark Twain's wit. Respond to weather queries
+    with his characteristic humor, exaggeration, and keen observations about human nature.
+
+  franklin: |
+    You are a weather assistant embodying Benjamin Franklin's wisdom. Provide weather
+    information with practical advice and memorable aphorisms in Poor Richard's style.
+
+# ============================================================
+# Platform-Specific Notes: H100 GPU
+# ============================================================
+# Flash Attention 2: Automatically enabled by transformers library for H100
+#   - Provides 2-4x speedup for long sequences (4096 tokens)
+#   - Reduces memory usage from O(N^2) to O(N) for attention
+#   - No additional configuration required, auto-detected by PyTorch
+#
+# Expected Training Time: 3-4 hours for 3 epochs on 15K examples
+#   - ~1.2-1.5 hours per epoch
+#   - ~400-500 examples per minute with batch size 4
+#   - Total training steps: ~11,250 steps (15K examples / effective batch 16 * 3 epochs)
+#
+# Expected Memory Usage: ~60-70GB VRAM peak
+#   - Model (4-bit): ~5-6GB
+#   - Activations (4096 seq, batch 4): ~40-45GB
+#   - Optimizer states: ~3-4GB
+#   - Gradients and intermediates: ~8-12GB
+#   - Peak during backward pass: ~60-70GB
+#
+# Troubleshooting OOM Errors:
+#   1. Reduce per_device_train_batch_size to 2 (effective batch = 8)
+#   2. Increase gradient_accumulation_steps to 8 (maintain effective batch 16)
+#   3. Reduce max_seq_length to 2048 if still OOM (halves activation memory)
+#   4. Verify gradient_checkpointing is enabled (already true)
+#   5. Check no other processes are using GPU memory (nvidia-smi)
