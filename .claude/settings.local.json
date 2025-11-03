@@ -51,7 +51,9 @@
       "Bash(else echo \"File not yet created\")",
       "Bash(data/synthetic/tool_use_examples_humor.jsonl )",
       "Bash(data/synthetic/tool_use_examples_humor2.jsonl )",
-      "Bash(data/synthetic/tool_use_examples_onion.jsonl )"
+      "Bash(data/synthetic/tool_use_examples_onion.jsonl )",
+      "Bash(find:*)",
+      "Bash(conda env list:*)"
     ],
     "deny": [],
     "ask": []
