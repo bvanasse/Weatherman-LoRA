@@ -172,14 +172,85 @@ python scripts/validate_environment.py --env=m4
 python scripts/validate_training_config.py --config configs/training_config_m4.yaml
 ```
 
-### Training Quick Start
+## Quick Start - Training
 
-See **[docs/TRAINING_QUICKSTART.md](docs/TRAINING_QUICKSTART.md)** for step-by-step training instructions including:
-- Platform detection
-- Configuration customization
-- Monitoring training
-- Troubleshooting OOM errors
-- Loading trained adapters
+### Option 1: Remote Training (H100 via RunPod) - Recommended
+
+**Best for**: Production training, fastest iteration (3-4 hours)
+
+**Cost**: $9-12 for complete training run
+
+```bash
+# 1. Provision H100 instance on RunPod
+# See docs/TRAINING_H100.md for detailed RunPod setup
+
+# 2. Clone repository and upload data
+git clone https://github.com/yourusername/Weatherman-LoRA.git
+cd Weatherman-LoRA
+
+# 3. Run setup script
+./setup_runpod_h100.sh
+
+# 4. Launch training
+./train_h100_runpod.sh
+
+# Training runs in tmux - safe to disconnect SSH
+# Monitor via Weights & Biases: https://wandb.ai
+
+# 5. After training (3-4 hours), download trained adapter
+scp -r user@runpod:/workspace/Weatherman-LoRA/adapters/weatherman-lora-h100 ./adapters/
+
+# 6. Stop RunPod instance to avoid charges
+```
+
+**See**: [docs/TRAINING_H100.md](docs/TRAINING_H100.md) for complete H100 training guide
+
+### Option 2: Local Training (Mac M4)
+
+**Best for**: Local development, zero cloud costs
+
+**Time**: 12-18 hours (overnight training recommended)
+
+```bash
+# 1. Verify prerequisites
+# - Mac M4 with 32GB+ unified memory
+# - 50GB+ free storage
+# - Training data prepared
+
+# 2. Run setup script
+./setup_m4_local.sh
+
+# 3. Close unnecessary applications (browsers, IDEs, etc.)
+
+# 4. Activate environment
+source .venv-local/bin/activate
+
+# 5. Launch training
+./train_m4_local.sh
+
+# Training runs in foreground (12-18 hours)
+# Monitor in Activity Monitor for memory pressure
+# Use Weights & Biases for remote monitoring
+
+# 6. After completion, model is at:
+# adapters/weatherman-lora-m4/
+```
+
+**See**: [docs/TRAINING_M4.md](docs/TRAINING_M4.md) for complete M4 training guide
+
+### After Training - Deployment
+
+Once training is complete, deploy your model:
+
+```bash
+# 1. Quick test (local)
+python scripts/test_inference.py --adapter adapters/weatherman-lora-h100
+
+# 2. Deploy with AnythingLLM or Ollama
+# See docs/DEPLOYMENT.md for complete deployment instructions
+```
+
+**See**: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for deployment guide with AnythingLLM, Ollama, and sample prompts
 
 ## Data Collection
 

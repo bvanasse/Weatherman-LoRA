@@ -53,7 +53,10 @@
       "Bash(data/synthetic/tool_use_examples_humor2.jsonl )",
       "Bash(data/synthetic/tool_use_examples_onion.jsonl )",
       "Bash(find:*)",
-      "Bash(conda env list:*)"
+      "Bash(conda env list:*)",
+      "Bash(if [ -f \"data/synthetic/final_train.jsonl\" ])",
+      "Bash(then wc -l data/synthetic/final_train.jsonl)",
+      "Bash(else echo \"final_train.jsonl not yet created\")"
     ],
     "deny": [],
     "ask": []

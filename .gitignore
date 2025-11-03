@@ -25,6 +25,10 @@ data/synthetic/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/synthetic/.gitkeep
+# Allow final training data files
+!data/synthetic/final_train.jsonl
+!data/synthetic/final_validation.jsonl
+!data/synthetic/merge_metadata.json
 
 # Model files (large files)
 models/*
