@@ -248,15 +248,23 @@ if command -v tmux &> /dev/null; then
         if conda install -y -c conda-forge tmux &> /dev/null; then
             success "Installed tmux via conda"
 
-            # Retry tmux launch
-            tmux new-session -d -s "$TMUX_SESSION" bash
-            tmux send-keys -t "$TMUX_SESSION" "conda activate weatherman-lora" C-m
-            sleep 1
-            tmux send-keys -t "$TMUX_SESSION" "$TRAINING_CMD" C-m
+            # Test if conda-installed tmux works
+            if tmux -V &> /dev/null; then
+                info "Conda tmux installation successful, using it..."
 
-            info "[TRAINING-H100] Starting training in tmux session: $TMUX_SESSION"
-            success "Training launched successfully"
-            USING_TMUX=true
+                # Retry tmux launch
+                tmux new-session -d -s "$TMUX_SESSION" bash
+                tmux send-keys -t "$TMUX_SESSION" "conda activate weatherman-lora" C-m
+                sleep 1
+                tmux send-keys -t "$TMUX_SESSION" "$TRAINING_CMD" C-m
+
+                info "[TRAINING-H100] Starting training in tmux session: $TMUX_SESSION"
+                success "Training launched successfully"
+                USING_TMUX=true
+            else
+                warning "Conda tmux still has library issues, falling back to nohup..."
+                USING_TMUX=false
+            fi
         else
             warning "Could not install tmux via conda, falling back to nohup..."
             USING_TMUX=false
