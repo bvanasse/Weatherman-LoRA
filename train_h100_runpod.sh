@@ -204,38 +204,99 @@ fi
 
 echo ""
 
-# Step 2.4: Launch training in tmux session
-info "Step 4: Launching training in tmux session..."
+# Step 2.4: Launch training in persistent session
+info "Step 4: Launching training in persistent session..."
 
 TMUX_SESSION="weatherman-training"
-
-# Check if tmux session already exists
-if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
-    warning "Tmux session '$TMUX_SESSION' already exists"
-    read -p "Kill existing session and create new one? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        tmux kill-session -t "$TMUX_SESSION"
-        success "Killed existing session"
-    else
-        error "Cannot proceed with existing session active"
-        info "To attach to existing session: tmux attach -t $TMUX_SESSION"
-        info "To kill existing session: tmux kill-session -t $TMUX_SESSION"
-        exit 1
-    fi
-fi
-
-# Create training command
 TRAINING_CMD="python scripts/train.py --config $CONFIG $RESUME_FLAG 2>&1 | tee $LOG_FILE"
 
-# Launch in tmux
-tmux new-session -d -s "$TMUX_SESSION" bash
-tmux send-keys -t "$TMUX_SESSION" "conda activate weatherman-lora" C-m
-sleep 1
-tmux send-keys -t "$TMUX_SESSION" "$TRAINING_CMD" C-m
+# Try to use tmux first
+if command -v tmux &> /dev/null; then
+    # Test if tmux works (check for library issues)
+    if tmux -V &> /dev/null; then
+        info "Using tmux for session persistence..."
 
-info "[TRAINING-H100] Starting training in tmux session: $TMUX_SESSION"
-success "Training launched successfully"
+        # Check if tmux session already exists
+        if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+            warning "Tmux session '$TMUX_SESSION' already exists"
+            read -p "Kill existing session and create new one? (y/N): " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                tmux kill-session -t "$TMUX_SESSION"
+                success "Killed existing session"
+            else
+                error "Cannot proceed with existing session active"
+                info "To attach to existing session: tmux attach -t $TMUX_SESSION"
+                info "To kill existing session: tmux kill-session -t $TMUX_SESSION"
+                exit 1
+            fi
+        fi
+
+        # Launch in tmux
+        tmux new-session -d -s "$TMUX_SESSION" bash
+        tmux send-keys -t "$TMUX_SESSION" "conda activate weatherman-lora" C-m
+        sleep 1
+        tmux send-keys -t "$TMUX_SESSION" "$TRAINING_CMD" C-m
+
+        info "[TRAINING-H100] Starting training in tmux session: $TMUX_SESSION"
+        success "Training launched successfully"
+        USING_TMUX=true
+    else
+        warning "tmux has library compatibility issues, trying conda installation..."
+
+        # Try to install tmux via conda
+        if conda install -y -c conda-forge tmux &> /dev/null; then
+            success "Installed tmux via conda"
+
+            # Retry tmux launch
+            tmux new-session -d -s "$TMUX_SESSION" bash
+            tmux send-keys -t "$TMUX_SESSION" "conda activate weatherman-lora" C-m
+            sleep 1
+            tmux send-keys -t "$TMUX_SESSION" "$TRAINING_CMD" C-m
+
+            info "[TRAINING-H100] Starting training in tmux session: $TMUX_SESSION"
+            success "Training launched successfully"
+            USING_TMUX=true
+        else
+            warning "Could not install tmux via conda, falling back to nohup..."
+            USING_TMUX=false
+        fi
+    fi
+else
+    warning "tmux not found, using nohup for background execution..."
+    USING_TMUX=false
+fi
+
+# Fallback to nohup if tmux failed
+if [ "$USING_TMUX" != "true" ]; then
+    info "Using nohup for persistent background execution..."
+
+    # Create a wrapper script to activate conda and run training
+    WRAPPER_SCRIPT="/tmp/weatherman_training_wrapper.sh"
+    cat > "$WRAPPER_SCRIPT" << 'WRAPPER_EOF'
+#!/bin/bash
+eval "$(conda shell.bash hook)"
+conda activate weatherman-lora
+WRAPPER_EOF
+    echo "$TRAINING_CMD" >> "$WRAPPER_SCRIPT"
+    chmod +x "$WRAPPER_SCRIPT"
+
+    # Launch with nohup
+    nohup bash "$WRAPPER_SCRIPT" > "$LOG_FILE" 2>&1 &
+    TRAINING_PID=$!
+
+    # Save PID for monitoring
+    echo $TRAINING_PID > /tmp/weatherman_training.pid
+
+    info "[TRAINING-H100] Starting training with nohup (PID: $TRAINING_PID)"
+    success "Training launched successfully"
+
+    info "To monitor training:"
+    info "  View log: tail -f $LOG_FILE"
+    info "  Check process: ps -p $TRAINING_PID"
+    info "  Kill training: kill $TRAINING_PID"
+fi
+
 echo ""
 
 # Step 2.5: Monitor first 100 steps for errors
@@ -277,19 +338,37 @@ success "[TRAINING-H100-STARTED] Training in progress"
 echo "============================================================"
 echo ""
 echo "Training Details:"
-echo "  Tmux Session: $TMUX_SESSION"
+if [ "$USING_TMUX" = "true" ]; then
+    echo "  Session Type: tmux"
+    echo "  Tmux Session: $TMUX_SESSION"
+else
+    echo "  Session Type: nohup (background process)"
+    if [ -f "/tmp/weatherman_training.pid" ]; then
+        echo "  Process PID: $(cat /tmp/weatherman_training.pid)"
+    fi
+fi
 echo "  Config: $CONFIG"
 echo "  Log File: $LOG_FILE"
 echo "  Checkpoint Dir: $CHECKPOINT_DIR"
 echo ""
 info "[TRAINING-H100] Estimated duration: 3-4 hours"
 echo ""
-echo "Monitoring Commands:"
-echo "  Reconnect to session:  tmux attach -t $TMUX_SESSION"
-echo "  Detach from session:   Ctrl+B, then D"
-echo "  View log file:         tail -f $LOG_FILE"
-echo "  Check GPU usage:       nvidia-smi"
-echo ""
+
+if [ "$USING_TMUX" = "true" ]; then
+    echo "Monitoring Commands (tmux):"
+    echo "  Reconnect to session:  tmux attach -t $TMUX_SESSION"
+    echo "  Detach from session:   Ctrl+B, then D"
+    echo "  View log file:         tail -f $LOG_FILE"
+    echo "  Check GPU usage:       nvidia-smi"
+    echo ""
+else
+    echo "Monitoring Commands (nohup):"
+    echo "  View log file:         tail -f $LOG_FILE"
+    echo "  Check process:         ps -p \$(cat /tmp/weatherman_training.pid)"
+    echo "  Check GPU usage:       nvidia-smi"
+    echo "  View real-time output: tail -f $LOG_FILE"
+    echo ""
+fi
 
 if [ -n "$WANDB_API_KEY" ] || grep -q "wandb" "$CONFIG" 2>/dev/null; then
     echo "Remote Monitoring:"
@@ -299,8 +378,13 @@ if [ -n "$WANDB_API_KEY" ] || grep -q "wandb" "$CONFIG" 2>/dev/null; then
 fi
 
 echo "Useful Commands:"
-echo "  List tmux sessions:    tmux ls"
-echo "  Kill training:         tmux kill-session -t $TMUX_SESSION"
+if [ "$USING_TMUX" = "true" ]; then
+    echo "  List tmux sessions:    tmux ls"
+    echo "  Kill training:         tmux kill-session -t $TMUX_SESSION"
+else
+    echo "  Kill training:         kill \$(cat /tmp/weatherman_training.pid)"
+    echo "  Check if running:      ps aux | grep 'scripts/train.py'"
+fi
 echo "  Resume after crash:    ./train_h100_runpod.sh"
 echo ""
 echo "After Training Completes:"
