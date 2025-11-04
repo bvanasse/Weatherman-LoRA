@@ -30,8 +30,12 @@ dependencies:
   - pip
   - pip:
       # Transformers: HuggingFace model loading and tokenization
-      # Pin 4.36.0 for Mistral 7B Instruct compatibility
-      - transformers==4.36.0
+      # Pin 4.40.0+ for Mistral 7B Instruct v0.3 compatibility
+      - transformers>=4.40.0
+
+      # Tokenizers: Fast tokenization library
+      # Pin 0.19.0+ for Mistral v0.3 tokenizer format support
+      - tokenizers>=0.19.0
 
       # PEFT: Parameter-Efficient Fine-Tuning (LoRA)
       # Pin 0.7.0 for stable LoRA configuration and adapter training
