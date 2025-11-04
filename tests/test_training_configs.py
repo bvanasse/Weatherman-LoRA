@@ -145,9 +145,9 @@ def test_configs_use_same_base_model():
         config_path=project_root / "configs" / "training_config_m4.yaml"
     )
 
-    # Both should use Mistral 7B Instruct v0.2
+    # Both should use Mistral 7B Instruct v0.3
     assert h100_config['model']['model_name_or_path'] == m4_config['model']['model_name_or_path']
-    assert h100_config['model']['model_name_or_path'] == 'mistralai/Mistral-7B-Instruct-v0.2'
+    assert h100_config['model']['model_name_or_path'] == 'mistralai/Mistral-7B-Instruct-v0.3'
 
 
 if __name__ == "__main__":

@@ -274,7 +274,7 @@ Total Tasks: 6 task groups covering H100 setup/training, M4 setup/training, repo
       - Test query: "What's the weather in Boston?"
     - **Section 3: Using with Ollama**
       - Document GGUF conversion process (reference llama.cpp)
-      - Provide example command: `python -m llama_cpp.convert --model mistralai/Mistral-7B-Instruct-v0.2 --lora adapters/weatherman-lora-h100 --output models/weatherman-lora.gguf`
+      - Provide example command: `python -m llama_cpp.convert --model mistralai/Mistral-7B-Instruct-v0.3 --lora adapters/weatherman-lora-h100 --output models/weatherman-lora.gguf`
       - Import to Ollama: `ollama create weatherman -f Modelfile`
       - Test: `ollama run weatherman "What's the weather in Seattle?"`
     - **Section 4: Sample Prompts**

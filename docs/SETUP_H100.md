@@ -174,7 +174,7 @@ All checks should pass.
 The H100-optimized configuration is in `configs/training_config_h100.yaml`:
 
 ### Key Settings:
-- **Base Model**: Mistral 7B Instruct v0.2 (`mistralai/Mistral-7B-Instruct-v0.2`)
+- **Base Model**: Mistral 7B Instruct v0.3 (`mistralai/Mistral-7B-Instruct-v0.3`)
 - **Sequence Length**: 4096 tokens (with Flash Attention 2)
 - **Batch Size**: 4 per device
 - **Gradient Accumulation**: 4 steps (effective batch size: 16)
@@ -317,7 +317,7 @@ After successful training:
 
 ## Additional Resources
 
-- [Mistral 7B Model Card](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2)
+- [Mistral 7B Model Card](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3)
 - [PEFT Documentation](https://huggingface.co/docs/peft)
 - [TRL Documentation](https://huggingface.co/docs/trl)
 - [Flash Attention 2 Paper](https://arxiv.org/abs/2307.08691)

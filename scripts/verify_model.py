@@ -6,7 +6,7 @@ Verifies that a base model has been downloaded correctly and can be loaded.
 
 Usage:
     python scripts/verify_model.py meta-llama/Meta-Llama-3.1-8B-Instruct
-    python scripts/verify_model.py mistralai/Mistral-7B-Instruct-v0.2
+    python scripts/verify_model.py mistralai/Mistral-7B-Instruct-v0.3
 """
 
 import sys
@@ -228,7 +228,7 @@ def main():
         print()
         print("Examples:")
         print("  python scripts/verify_model.py meta-llama/Meta-Llama-3.1-8B-Instruct")
-        print("  python scripts/verify_model.py mistralai/Mistral-7B-Instruct-v0.2")
+        print("  python scripts/verify_model.py mistralai/Mistral-7B-Instruct-v0.3")
         sys.exit(1)
 
     model_name = sys.argv[1]

@@ -12,7 +12,7 @@
 
 ### Base Models
 - **meta-llama/Meta-Llama-3.1-8B-Instruct** — Primary base model (8B parameters, Apache 2.0 license)
-- **mistralai/Mistral-7B-Instruct-v0.2** — Alternative base model (7B parameters, Apache 2.0 license)
+- **mistralai/Mistral-7B-Instruct-v0.3** — Alternative base model (7B parameters, Apache 2.0 license)
 - **Sequence Length:** 4096 tokens preferred, 2048 acceptable if memory-constrained
 
 ### LoRA Configuration

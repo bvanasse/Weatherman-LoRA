@@ -93,7 +93,7 @@ This project supports dual-platform QLoRA training optimized for:
 ```yaml
 # Key settings
 model:
-  model_name_or_path: mistralai/Mistral-7B-Instruct-v0.2
+  model_name_or_path: mistralai/Mistral-7B-Instruct-v0.3
   max_seq_length: 4096  # Full context with Flash Attention 2
 
 lora:
@@ -483,7 +483,7 @@ See [agent-os/product/roadmap.md](agent-os/product/roadmap.md) for the complete 
 - **Hardware**: Apple Silicon M1/M2/M3/M4 with 32GB unified memory
 
 ### Base Model
-- **Mistral 7B Instruct v0.2** (`mistralai/Mistral-7B-Instruct-v0.2`)
+- **Mistral 7B Instruct v0.3** (`mistralai/Mistral-7B-Instruct-v0.3`)
 
 ## Documentation
 

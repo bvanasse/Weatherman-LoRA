@@ -9,7 +9,7 @@ Complete guide for training the Weatherman LoRA adapter on Mac M4 (Apple Silicon
 - **Training Time:** 12-18 hours
 - **Estimated Cost:** $0 (local training)
 - **Dataset:** 14,399 training examples (combined tool-use + humor)
-- **Base Model:** Mistral 7B Instruct v0.2
+- **Base Model:** Mistral 7B Instruct v0.3
 
 ---
 

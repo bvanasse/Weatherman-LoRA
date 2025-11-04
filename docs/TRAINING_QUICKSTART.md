@@ -68,7 +68,7 @@ See [SETUP_M4.md](./SETUP_M4.md) for detailed instructions.
 ```yaml
 # Key settings
 model:
-  model_name_or_path: mistralai/Mistral-7B-Instruct-v0.2
+  model_name_or_path: mistralai/Mistral-7B-Instruct-v0.3
   max_seq_length: 4096  # Full context with Flash Attention 2
 
 lora:
@@ -381,7 +381,7 @@ log show --predicate 'process == "Python"' --last 1h
    from peft import PeftModel
    from transformers import AutoModelForCausalLM
 
-   base_model = AutoModelForCausalLM.from_pretrained("mistralai/Mistral-7B-Instruct-v0.2")
+   base_model = AutoModelForCausalLM.from_pretrained("mistralai/Mistral-7B-Instruct-v0.3")
    model = PeftModel.from_pretrained(base_model, "adapters/weatherman-lora-h100")
    ```
 
@@ -424,6 +424,6 @@ config = load_training_config(config_path="configs/training_config_h100.yaml")
 
 - [H100 Setup Guide](./SETUP_H100.md) - Detailed H100 setup
 - [M4 Setup Guide](./SETUP_M4.md) - Detailed M4 setup
-- [Mistral 7B Model Card](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2)
+- [Mistral 7B Model Card](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3)
 - [PEFT Documentation](https://huggingface.co/docs/peft)
 - [TRL Documentation](https://huggingface.co/docs/trl)

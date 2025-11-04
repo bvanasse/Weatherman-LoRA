@@ -79,7 +79,7 @@ dependencies:
 
 # Notes:
 # - This environment is optimized for single H100 GPU training
-# - Base model: Mistral 7B Instruct v0.2 (mistralai/Mistral-7B-Instruct-v0.2)
+# - Base model: Mistral 7B Instruct v0.3 (mistralai/Mistral-7B-Instruct-v0.3)
 # - QLoRA configuration: 4-bit NF4, double quantization, bfloat16 compute dtype
 # - Expected training time: 3-4 hours for 3 epochs on H100 (15K examples)
 # - Memory requirements: 60-70GB VRAM (80GB H100 recommended)

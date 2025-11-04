@@ -101,7 +101,7 @@ This dataset will teach the model *what* to do. We will synthetically create exa
 1.  **Choose a Base Model:**
     *   Select a small but capable instruction-tuned model. Excellent candidates include:
         *   `microsoft/Phi-3-mini-4k-instruct` (Great performance at a small size)
-        *   `mistralai/Mistral-7B-Instruct-v0.2` (A very strong 7B parameter model)
+        *   `mistralai/Mistral-7B-Instruct-v0.3` (A very strong 7B parameter model)
         *   `meta-llama/Llama-3-8B-Instruct` (State-of-the-art for its size)
 
 2.  **Set Up the Environment:**
@@ -148,7 +148,7 @@ This dataset will teach the model *what* to do. We will synthetically create exa
         from peft import PeftModel
 
         # Load the base model and the LoRA adapter
-        base_model = AutoModelForCausalLM.from_pretrained("mistralai/Mistral-7B-Instruct-v0.2")
+        base_model = AutoModelForCausalLM.from_pretrained("mistralai/Mistral-7B-Instruct-v0.3")
         lora_model = PeftModel.from_pretrained(base_model, "path/to/your/lora_adapter")
 
         # Merge the weights and save the final model

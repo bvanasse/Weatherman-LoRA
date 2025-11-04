@@ -23,7 +23,7 @@ def test_h100_config_end_to_end():
     config = load_training_config(config_path=config_path)
 
     # Verify key training parameters are accessible
-    assert get_config_value(config, 'model.model_name_or_path') == 'mistralai/Mistral-7B-Instruct-v0.2'
+    assert get_config_value(config, 'model.model_name_or_path') == 'mistralai/Mistral-7B-Instruct-v0.3'
     assert get_config_value(config, 'model.max_seq_length') == 4096
     assert get_config_value(config, 'lora.r') == 16
     assert get_config_value(config, 'lora.lora_alpha') == 32
@@ -39,7 +39,7 @@ def test_m4_config_end_to_end():
     config = load_training_config(config_path=config_path)
 
     # Verify key training parameters are accessible
-    assert get_config_value(config, 'model.model_name_or_path') == 'mistralai/Mistral-7B-Instruct-v0.2'
+    assert get_config_value(config, 'model.model_name_or_path') == 'mistralai/Mistral-7B-Instruct-v0.3'
     assert get_config_value(config, 'model.max_seq_length') == 2048
     assert get_config_value(config, 'lora.r') == 16
     assert get_config_value(config, 'lora.lora_alpha') == 32
@@ -72,7 +72,7 @@ def test_config_override_functionality():
     assert get_config_value(config, 'lora.r') == 32
 
     # Verify other values remain unchanged
-    assert get_config_value(config, 'model.model_name_or_path') == 'mistralai/Mistral-7B-Instruct-v0.2'
+    assert get_config_value(config, 'model.model_name_or_path') == 'mistralai/Mistral-7B-Instruct-v0.3'
     assert get_config_value(config, 'lora.lora_alpha') == 32  # Should still be from original config
 
 

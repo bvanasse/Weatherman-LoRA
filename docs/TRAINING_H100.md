@@ -8,7 +8,7 @@ Complete guide for training the Weatherman LoRA adapter on NVIDIA H100 GPUs via 
 - **Training Time:** 3-4 hours
 - **Estimated Cost:** $2-3 USD
 - **Dataset:** 14,399 training examples (combined tool-use + humor)
-- **Base Model:** Mistral 7B Instruct v0.2
+- **Base Model:** Mistral 7B Instruct v0.3
 
 ---
 

@@ -218,7 +218,7 @@ dependencies:
 **Key Settings**:
 ```yaml
 model:
-  model_name_or_path: "mistralai/Mistral-7B-Instruct-v0.2"
+  model_name_or_path: "mistralai/Mistral-7B-Instruct-v0.3"
   max_seq_length: 4096
 
 lora:
@@ -532,7 +532,7 @@ training:
 - Convert adapter to GGUF format:
   ```bash
   python scripts/convert_lora_to_gguf.py \
-    --base-model mistralai/Mistral-7B-Instruct-v0.2 \
+    --base-model mistralai/Mistral-7B-Instruct-v0.3 \
     --adapter adapters/weatherman-lora-h100 \
     --output models/weatherman-lora.gguf
   ```

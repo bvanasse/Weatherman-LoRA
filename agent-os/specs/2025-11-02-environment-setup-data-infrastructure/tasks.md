@@ -188,7 +188,7 @@ Total Tasks: 6 task groups with 37 sub-tasks
     - File: `docs/MODEL_DOWNLOAD.md`
     - HuggingFace Hub authentication setup (token creation, login command)
     - Download command for Llama 3.1 8B Instruct: `huggingface-cli download meta-llama/Meta-Llama-3.1-8B-Instruct`
-    - Download command for Mistral 7B Instruct: `huggingface-cli download mistralai/Mistral-7B-Instruct-v0.2`
+    - Download command for Mistral 7B Instruct: `huggingface-cli download mistralai/Mistral-7B-Instruct-v0.3`
     - Configure cache directory to `models/` folder
     - Explain download separately on each GPU machine strategy
     - Note: ~15GB per model, avoid transferring between machines

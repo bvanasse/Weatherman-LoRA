@@ -170,7 +170,7 @@ All checks should pass.
 The M4-optimized configuration is in `configs/training_config_m4.yaml`:
 
 ### Key Settings:
-- **Base Model**: Mistral 7B Instruct v0.2 (`mistralai/Mistral-7B-Instruct-v0.2`)
+- **Base Model**: Mistral 7B Instruct v0.3 (`mistralai/Mistral-7B-Instruct-v0.3`)
 - **Sequence Length**: 2048 tokens (reduced for 32GB memory)
 - **Batch Size**: 1 per device (conservative for memory)
 - **Gradient Accumulation**: 16 steps (effective batch size: 16)
@@ -451,5 +451,5 @@ After successful training:
 
 - [PyTorch MPS Backend Documentation](https://pytorch.org/docs/stable/notes/mps.html)
 - [Apple Metal Performance Shaders](https://developer.apple.com/metal/pytorch/)
-- [Mistral 7B Model Card](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2)
+- [Mistral 7B Model Card](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3)
 - [PEFT Documentation](https://huggingface.co/docs/peft)

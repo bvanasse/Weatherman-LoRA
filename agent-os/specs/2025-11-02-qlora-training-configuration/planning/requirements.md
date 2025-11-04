@@ -102,7 +102,7 @@ No visual assets provided.
 - Separate config files: `configs/training_config_h100.yaml` and `configs/training_config_m4.yaml`
 
 **Base Model:**
-- Use Mistral 7B Instruct (`mistralai/Mistral-7B-Instruct-v0.2`)
+- Use Mistral 7B Instruct (`mistralai/Mistral-7B-Instruct-v0.3`)
 - Update from existing Llama 3.1 8B configuration
 
 **LoRA Hyperparameters (Fixed Values):**

@@ -10,7 +10,7 @@ Create dual-platform QLoRA training configurations optimized for H100 GPU (prima
 ## Specific Requirements
 
 **H100 Training Configuration**
-- Create `configs/training_config_h100.yaml` with Mistral 7B Instruct base model (`mistralai/Mistral-7B-Instruct-v0.2`)
+- Create `configs/training_config_h100.yaml` with Mistral 7B Instruct base model (`mistralai/Mistral-7B-Instruct-v0.3`)
 - Configure 4096 token sequence length with batch size 4-8 and gradient accumulation 4 steps
 - Enable Flash Attention 2, gradient checkpointing, and 4-bit NF4 quantization with double quantization
 - Set LoRA parameters: rank=16, alpha=32, dropout=0.05 targeting all 7 projection modules (q/k/v/o/gate/up/down)

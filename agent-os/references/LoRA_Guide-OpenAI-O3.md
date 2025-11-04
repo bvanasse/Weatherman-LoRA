@@ -54,7 +54,7 @@ Deliverable: `raw/` folder with source-labeled `.txt` files and metadata CSV.
 5. **Split**: 90 % train / 10 % val.
 
 ### Day 3 – LoRA Training & Evaluation (6 h)
-1. **Select Base**: `mistralai/Mistral-7B-Instruct-v0.2` (Apache 2.0).
+1. **Select Base**: `mistralai/Mistral-7B-Instruct-v0.3` (Apache 2.0).
 2. **Config** (`scripts/train_lora.py`)
    • r = 64, α = 16, dropout = 0.05.
    • Target modules: `q_proj`, `v_proj`, `k_proj`, `o_proj`.
@@ -103,7 +103,7 @@ JSON tool-call validity | ≥95 % parses with `json.loads`
 • Project Gutenberg – https://www.gutenberg.org  
 • The Onion RSS – https://www.theonion.com/rss  
 • Pushshift Reddit API – https://github.com/pushshift/api  
-• Mistral-7B-Instruct v0.2 – https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2  
+• Mistral-7B-Instruct v0.2 – https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3  
 • PEFT – https://github.com/huggingface/peft  
 • trafilatura (web scraping) – https://github.com/adbar/trafilatura  
 • HUMO humor metric – https://arxiv.org/abs/2305.06929

@@ -115,7 +115,7 @@ print(f"Model downloaded and cached in {os.environ['HF_HOME']}")
 
 # Alternative: Download Mistral 7B Instruct
 # print("Downloading Mistral 7B Instruct...")
-# model_name = "mistralai/Mistral-7B-Instruct-v0.2"
+# model_name = "mistralai/Mistral-7B-Instruct-v0.3"
 # tokenizer = AutoTokenizer.from_pretrained(model_name)
 # model = AutoModelForCausalLM.from_pretrained(
 #     model_name,
@@ -133,8 +133,8 @@ huggingface-cli download meta-llama/Meta-Llama-3.1-8B-Instruct \
     --local-dir-use-symlinks False
 
 # Or download Mistral 7B Instruct
-huggingface-cli download mistralai/Mistral-7B-Instruct-v0.2 \
-    --local-dir models/Mistral-7B-Instruct-v0.2 \
+huggingface-cli download mistralai/Mistral-7B-Instruct-v0.3 \
+    --local-dir models/Mistral-7B-Instruct-v0.3 \
     --local-dir-use-symlinks False
 ```
 
@@ -156,7 +156,7 @@ Use the provided verification script:
 python scripts/verify_model.py meta-llama/Meta-Llama-3.1-8B-Instruct
 
 # Or verify Mistral
-python scripts/verify_model.py mistralai/Mistral-7B-Instruct-v0.2
+python scripts/verify_model.py mistralai/Mistral-7B-Instruct-v0.3
 ```
 
 Expected output:
@@ -184,7 +184,7 @@ Expected output:
 
 **Best for:** Production use, commercial applications
 
-### Mistral 7B Instruct v0.2
+### Mistral 7B Instruct v0.3
 
 **Pros:**
 - No access request needed
@@ -220,7 +220,7 @@ models/
 │       │   │       ├── tokenizer.json
 │       │   │       └── ...
 │       │   └── refs/
-│       └── models--mistralai--Mistral-7B-Instruct-v0.2/
+│       └── models--mistralai--Mistral-7B-Instruct-v0.3/
 │           └── snapshots/
 │               └── [hash]/          # ~14.8 GB
 ```
@@ -312,7 +312,7 @@ model:
   model_name_or_path: meta-llama/Meta-Llama-3.1-8B-Instruct
 
   # Or use Mistral
-  # model_name_or_path: mistralai/Mistral-7B-Instruct-v0.2
+  # model_name_or_path: mistralai/Mistral-7B-Instruct-v0.3
 ```
 
 ## Model Download Checklist

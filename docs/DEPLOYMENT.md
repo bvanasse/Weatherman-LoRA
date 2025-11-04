@@ -5,7 +5,7 @@ This guide covers deploying your trained LoRA adapter for inference with Anythin
 ## Prerequisites
 
 - Trained LoRA adapter (from H100 or M4 training)
-- Base model: Mistral 7B Instruct v0.2 or Llama 3.1 8B
+- Base model: Mistral 7B Instruct v0.3 or Llama 3.1 8B
 - Deployment platform: AnythingLLM, Ollama, or compatible LLM framework
 
 ---
@@ -75,7 +75,7 @@ curl -sSL https://install.anythingllm.com | bash
 2. **Load Base Model**
    - Navigate to Settings → LLM Provider
    - Select "Local LLM" or "Ollama"
-   - Choose base model: `mistralai/Mistral-7B-Instruct-v0.2`
+   - Choose base model: `mistralai/Mistral-7B-Instruct-v0.3`
    - Wait for model download (7-14GB)
 
 3. **Add LoRA Adapter**
@@ -139,7 +139,7 @@ make
 # Convert LoRA to GGUF
 python convert.py \
   --model-path ../adapters/weatherman-lora-h100 \
-  --base-model mistralai/Mistral-7B-Instruct-v0.2 \
+  --base-model mistralai/Mistral-7B-Instruct-v0.3 \
   --output-type gguf \
   --output-file ../models/weatherman-lora.gguf
 ```

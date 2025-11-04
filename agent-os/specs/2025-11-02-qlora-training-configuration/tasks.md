@@ -15,7 +15,7 @@ Focus: Dual-platform training configuration with stability and validation
 - [x] 1.0 Complete training configuration files
   - [x] 1.1 Create H100 training configuration
     - Create `configs/training_config_h100.yaml` based on existing `configs/training_config.yaml` structure
-    - Update base model to `mistralai/Mistral-7B-Instruct-v0.2`
+    - Update base model to `mistralai/Mistral-7B-Instruct-v0.3`
     - Set sequence length: 4096 tokens
     - Configure batch size: 4-8, gradient accumulation: 4 steps
     - Set LoRA parameters: r=16, alpha=32, dropout=0.05
@@ -32,7 +32,7 @@ Focus: Dual-platform training configuration with stability and validation
     - Document at bottom: expected training time (3-4 hours), memory usage (~60-70GB VRAM)
   - [x] 1.2 Create Mac M4 training configuration
     - Create `configs/training_config_m4.yaml` based on H100 config structure
-    - Keep same base model: `mistralai/Mistral-7B-Instruct-v0.2`
+    - Keep same base model: `mistralai/Mistral-7B-Instruct-v0.3`
     - Adjust sequence length: 2048 tokens (memory-constrained)
     - Configure batch size: 1-2, gradient accumulation: 8-16 steps
     - Keep identical LoRA parameters: r=16, alpha=32, dropout=0.05, same target modules

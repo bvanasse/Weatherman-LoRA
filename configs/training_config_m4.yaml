@@ -1,6 +1,6 @@
 # Weatherman-LoRA Training Configuration - Mac M4
 # Optimized for Mac M4 with MPS backend (32GB unified memory)
-# Base Model: Mistral 7B Instruct v0.2
+# Base Model: Mistral 7B Instruct v0.3
 # Expected Training Time: 8-12 hours for 3 epochs (15K examples)
 # Expected Memory Usage: ~24-28GB unified memory
 
@@ -163,10 +163,10 @@ training:
 # Model Configuration
 # ============================================================
 model:
-  # Base model: Mistral 7B Instruct v0.2
+  # Base model: Mistral 7B Instruct v0.3
   # Instruction-tuned variant for better chat format performance
   # Same as H100 config for reproducible results
-  model_name_or_path: mistralai/Mistral-7B-Instruct-v0.2
+  model_name_or_path: mistralai/Mistral-7B-Instruct-v0.3
 
   # Maximum sequence length: 2048 tokens
   # Reduced from H100's 4096 due to 32GB unified memory constraint

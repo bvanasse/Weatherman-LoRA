@@ -297,7 +297,7 @@ training:
 
 model:
   model_name_or_path: meta-llama/Meta-Llama-3.1-8B-Instruct
-  # or: mistralai/Mistral-7B-Instruct-v0.2
+  # or: mistralai/Mistral-7B-Instruct-v0.3
 ```
 
 ### Paths Configuration
