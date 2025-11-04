@@ -28,6 +28,7 @@ Create account at [runpod.io](https://www.runpod.io/):
 - CUDA: 12.1+ (pre-installed on RunPod)
 - Storage: 50GB+ free space
 - RAM: 32GB+ recommended
+- Conda: Optional (auto-installed to /workspace/miniconda3 if missing)
 
 **Local Machine (for setup):**
 - SSH client
@@ -134,7 +135,11 @@ Weatherman-LoRA H100 RunPod Environment Setup
 [SETUP-H100] Starting RunPod H100 environment setup
 
 Step 1: Verifying RunPod H100 environment...
-✓ Found: conda 23.7.4
+⚠ WARNING: Conda not found. Installing Miniconda to /workspace/miniconda3...
+Downloading Miniconda installer...
+Installing Miniconda to /workspace/miniconda3...
+✓ Miniconda installed successfully to /workspace/miniconda3
+✓ Found: conda 24.1.2
 ✓ Found: CUDA 12.1
 ✓ Found: H100 GPU with 80GB VRAM
 

@@ -5,16 +5,16 @@
 #
 # This script:
 # 1. Verifies RunPod H100 environment (CUDA 12.1+, H100 GPU with 80GB VRAM)
-# 2. Creates conda environment from environment-remote.yml
-# 3. Installs Flash Attention 2 for optimized training
-# 4. Runs comprehensive validation checks
-# 5. Creates data symlinks
-# 6. Configures Weights & Biases authentication
+# 2. Auto-installs Miniconda to /workspace/miniconda3 if not present
+# 3. Creates conda environment from environment-remote.yml
+# 4. Installs Flash Attention 2 for optimized training
+# 5. Runs comprehensive validation checks
+# 6. Creates data symlinks
+# 7. Configures Weights & Biases authentication
 #
 # Prerequisites:
-# - RunPod H100 instance
-# - Conda or Miniconda installed
-# - CUDA 12.1+ drivers installed
+# - RunPod H100 instance with CUDA 12.1+ drivers
+# - Conda installation is optional (will be auto-installed to /workspace/ if missing)
 #
 # Usage: ./setup_runpod_h100.sh
 
@@ -54,13 +54,37 @@ echo ""
 # Step 1.2: Implement RunPod environment verification
 info "Step 1: Verifying RunPod H100 environment..."
 
-# Check conda installation
+# Check conda installation, install if missing
 if ! command -v conda &> /dev/null; then
-    error "conda is not installed"
-    info "Please install Miniconda:"
-    info "  wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
-    info "  bash Miniconda3-latest-Linux-x86_64.sh"
-    exit 1
+    warning "Conda not found. Installing Miniconda to /workspace/miniconda3..."
+
+    # Download Miniconda installer
+    info "Downloading Miniconda installer..."
+    wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh
+
+    if [ ! -f /tmp/miniconda.sh ]; then
+        error "Failed to download Miniconda installer"
+        exit 1
+    fi
+
+    # Install to /workspace/miniconda3 (persistent storage on RunPod)
+    info "Installing Miniconda to /workspace/miniconda3..."
+    bash /tmp/miniconda.sh -b -p /workspace/miniconda3
+    rm /tmp/miniconda.sh
+
+    # Initialize conda for bash
+    /workspace/miniconda3/bin/conda init bash
+
+    # Source bashrc to make conda available in current session
+    source ~/.bashrc
+
+    # Verify conda is now available
+    if ! command -v conda &> /dev/null; then
+        error "Conda installation failed"
+        exit 1
+    fi
+
+    success "Miniconda installed successfully to /workspace/miniconda3"
 fi
 
 CONDA_VERSION=$(conda --version)
