@@ -166,6 +166,60 @@ if [ "$SKIP_ENV_CREATION" != "true" ]; then
     eval "$(conda shell.bash hook)"
     conda activate weatherman-lora
     success "Activated weatherman-lora environment"
+
+    # Verify critical package versions for Mistral v0.3 compatibility
+    info "Verifying package versions..."
+
+    # Check PyTorch version (requires 2.2.0+ for pytree API)
+    PYTORCH_VERSION=$(python -c "import torch; print(torch.__version__)" 2>/dev/null | cut -d'+' -f1)
+    if [ -z "$PYTORCH_VERSION" ]; then
+        error "PyTorch not installed"
+        exit 1
+    fi
+
+    PYTORCH_MAJOR=$(echo $PYTORCH_VERSION | cut -d'.' -f1)
+    PYTORCH_MINOR=$(echo $PYTORCH_VERSION | cut -d'.' -f2)
+
+    if [ "$PYTORCH_MAJOR" -lt 2 ] || ([ "$PYTORCH_MAJOR" -eq 2 ] && [ "$PYTORCH_MINOR" -lt 2 ]); then
+        error "PyTorch $PYTORCH_VERSION is older than required 2.2.0+"
+        info "Mistral v0.3 with transformers 4.40.0+ requires PyTorch 2.2.0+"
+        exit 1
+    fi
+    success "PyTorch $PYTORCH_VERSION (requires 2.2.0+)"
+
+    # Check transformers version (requires 4.40.0+ for Mistral v0.3)
+    TRANSFORMERS_VERSION=$(python -c "import transformers; print(transformers.__version__)" 2>/dev/null)
+    if [ -z "$TRANSFORMERS_VERSION" ]; then
+        error "transformers not installed"
+        exit 1
+    fi
+
+    TRANSFORMERS_MAJOR=$(echo $TRANSFORMERS_VERSION | cut -d'.' -f1)
+    TRANSFORMERS_MINOR=$(echo $TRANSFORMERS_VERSION | cut -d'.' -f2)
+
+    if [ "$TRANSFORMERS_MAJOR" -lt 4 ] || ([ "$TRANSFORMERS_MAJOR" -eq 4 ] && [ "$TRANSFORMERS_MINOR" -lt 40 ]); then
+        error "transformers $TRANSFORMERS_VERSION is older than required 4.40.0+"
+        info "Mistral 7B Instruct v0.3 requires transformers 4.40.0+"
+        exit 1
+    fi
+    success "transformers $TRANSFORMERS_VERSION (requires 4.40.0+)"
+
+    # Check tokenizers version (requires 0.19.0+ for Mistral v0.3)
+    TOKENIZERS_VERSION=$(python -c "import tokenizers; print(tokenizers.__version__)" 2>/dev/null)
+    if [ -z "$TOKENIZERS_VERSION" ]; then
+        error "tokenizers not installed"
+        exit 1
+    fi
+
+    TOKENIZERS_MAJOR=$(echo $TOKENIZERS_VERSION | cut -d'.' -f1)
+    TOKENIZERS_MINOR=$(echo $TOKENIZERS_VERSION | cut -d'.' -f2)
+
+    if [ "$TOKENIZERS_MAJOR" -eq 0 ] && [ "$TOKENIZERS_MINOR" -lt 19 ]; then
+        error "tokenizers $TOKENIZERS_VERSION is older than required 0.19.0+"
+        info "Mistral v0.3 tokenizer format requires tokenizers 0.19.0+"
+        exit 1
+    fi
+    success "tokenizers $TOKENIZERS_VERSION (requires 0.19.0+)"
 fi
 
 echo ""

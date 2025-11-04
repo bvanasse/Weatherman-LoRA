@@ -1,23 +1,28 @@
 # Weatherman-LoRA Mac M4 Training Environment Dependencies
 # For Mac M4 with MPS backend and 32GB unified memory
 # Python 3.10+ required for compatibility
-# Base Model: Mistral 7B Instruct v0.2
+# Base Model: Mistral 7B Instruct v0.3
 
 # ============================================================
 # PyTorch with MPS Support
 # ============================================================
-# Install PyTorch 2.1+ with MPS backend support
+# Install PyTorch 2.2+ with MPS backend support
+# PyTorch 2.2.0+ required for pytree API (needed by transformers 4.40.0+)
 # MPS (Metal Performance Shaders) provides GPU acceleration on Apple Silicon
-torch>=2.1.0
-torchvision>=0.16.0
-torchaudio>=2.1.0
+torch>=2.2.0
+torchvision>=0.17.0
+torchaudio>=2.2.0
 
 # ============================================================
 # Core Training Libraries
 # ============================================================
-# HuggingFace Transformers for Mistral 7B Instruct
-# Pin 4.36.0 for Mistral 7B Instruct compatibility
-transformers==4.36.0
+# HuggingFace Transformers for Mistral 7B Instruct v0.3
+# Pin 4.40.0+ for Mistral v0.3 compatibility
+transformers>=4.40.0
+
+# Tokenizers: Fast tokenization library
+# Pin 0.19.0+ for Mistral v0.3 tokenizer format support
+tokenizers>=0.19.0
 
 # PEFT: Parameter-Efficient Fine-Tuning (LoRA)
 # Pin 0.7.0 for stable LoRA configuration
@@ -81,7 +86,7 @@ pytest==7.4.3
 # Notes
 # ============================================================
 # Platform: Mac M4 with MPS backend
-# Base Model: Mistral 7B Instruct v0.2
+# Base Model: Mistral 7B Instruct v0.3
 # Unified Memory: 32GB (shared between CPU and GPU)
 #
 # Key Differences from H100 Environment:
