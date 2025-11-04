@@ -40,7 +40,7 @@ info() {
 
 # Parse command line arguments
 CONFIG="configs/training_config_h100.yaml"
-while [[ $# -gt 0 ]]; then
+while [[ $# -gt 0 ]]; do
     case $1 in
         --config)
             CONFIG="$2"
