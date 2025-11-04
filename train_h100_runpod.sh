@@ -161,7 +161,9 @@ info "Step 3: Checking for existing checkpoints..."
 
 CHECKPOINT_DIR="adapters/weatherman-lora-h100"
 RESUME_METADATA="$CHECKPOINT_DIR/resume_metadata.json"
-RESUME_FLAG=""
+
+# Note: HuggingFace Trainer automatically resumes from checkpoints in output_dir
+# We just track metadata for crash loop detection
 
 if [ -d "$CHECKPOINT_DIR" ] && [ "$(ls -A $CHECKPOINT_DIR)" ]; then
     warning "Found existing checkpoints in $CHECKPOINT_DIR"
@@ -187,12 +189,11 @@ if [ -d "$CHECKPOINT_DIR" ] && [ "$(ls -A $CHECKPOINT_DIR)" ]; then
         RESUME_COUNT=$((RESUME_COUNT + 1))
         python3 -c "import json; import datetime; data = {'last_step': $LAST_STEP, 'resume_count': $RESUME_COUNT, 'last_resume': datetime.datetime.now().isoformat()}; json.dump(data, open('$RESUME_METADATA', 'w'), indent=2)"
 
-        success "Resuming training from step $LAST_STEP (attempt $RESUME_COUNT/3)"
-        RESUME_FLAG="--resume_from_checkpoint $CHECKPOINT_DIR"
+        success "Trainer will automatically resume from checkpoint (attempt $RESUME_COUNT/3)"
     else
         info "Checkpoint found but no resume metadata. Creating new metadata..."
         python3 -c "import json; import datetime; data = {'last_step': 0, 'resume_count': 1, 'last_resume': datetime.datetime.now().isoformat()}; json.dump(data, open('$RESUME_METADATA', 'w'), indent=2)"
-        RESUME_FLAG="--resume_from_checkpoint $CHECKPOINT_DIR"
+        info "Trainer will automatically resume from checkpoint"
     fi
 else
     info "No existing checkpoints found. Starting fresh training."
@@ -208,7 +209,7 @@ echo ""
 info "Step 4: Launching training in persistent session..."
 
 TMUX_SESSION="weatherman-training"
-TRAINING_CMD="python scripts/train.py --config $CONFIG $RESUME_FLAG 2>&1 | tee $LOG_FILE"
+TRAINING_CMD="python scripts/train.py --config $CONFIG 2>&1 | tee $LOG_FILE"
 
 # Try to use tmux first
 if command -v tmux &> /dev/null; then
