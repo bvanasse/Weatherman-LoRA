@@ -16,11 +16,11 @@ dependencies:
   - python=3.10
 
   # PyTorch with CUDA 12.1 support
-  # Pin 2.1.0 for stable CUDA integration and compatibility with PEFT/TRL
-  - pytorch=2.1.0
+  # Pin 2.2.0 for transformers 4.40.0+ compatibility (pytree API requirement)
+  - pytorch=2.2.0
   - pytorch-cuda=12.1
-  - torchvision=0.16.0
-  - torchaudio=2.1.0
+  - torchvision=0.17.0
+  - torchaudio=2.2.0
 
   # CUDA Toolkit (for nvcc and libraries)
   - cuda-toolkit=12.1
