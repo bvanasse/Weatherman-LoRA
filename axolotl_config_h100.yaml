@@ -1,0 +1,186 @@
+# Weatherman-LoRA Axolotl Configuration for H100 GPU
+# Optimized for RunPod H100 with 80GB VRAM
+# Base Model: Mistral 7B Instruct v0.3
+
+# ============================================================
+# Base Model Configuration
+# ============================================================
+base_model: mistralai/Mistral-7B-Instruct-v0.3
+model_type: MistralForCausalLM
+tokenizer_type: AutoTokenizer
+trust_remote_code: true
+
+# ============================================================
+# Dataset Configuration
+# ============================================================
+datasets:
+  - path: data/synthetic/final_train.jsonl
+    ds_type: json  # JSONL format
+    type: chat_template  # Use chat template format (supports tool calls)
+    field_messages: messages  # Field containing message array
+    message_field_role: role
+    message_field_content: content
+
+# Validation Dataset
+val_set_size: 0  # We use a separate validation file
+test_datasets:
+  - path: data/synthetic/final_validation.jsonl
+    ds_type: json
+    type: chat_template
+    field_messages: messages
+    message_field_role: role
+    message_field_content: content
+
+# ============================================================
+# Chat Template
+# ============================================================
+# Use Mistral's chat template for proper formatting
+chat_template: mistral
+
+# ============================================================
+# LoRA Configuration
+# ============================================================
+adapter: lora
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+lora_fan_in_fan_out: false
+
+# ============================================================
+# Quantization (QLoRA)
+# ============================================================
+load_in_4bit: true
+bnb_4bit_quant_type: nf4
+bnb_4bit_compute_dtype: bfloat16
+bnb_4bit_use_double_quant: true
+
+# ============================================================
+# Sequence and Packing Configuration
+# ============================================================
+sequence_len: 4096  # H100 with Flash Attention can handle 4096
+sample_packing: false  # Disable for tool calling to preserve conversation boundaries
+pad_to_sequence_len: true
+
+# ============================================================
+# Training Hyperparameters
+# ============================================================
+micro_batch_size: 4
+gradient_accumulation_steps: 4
+num_epochs: 3
+learning_rate: 0.0002
+lr_scheduler: cosine
+warmup_steps: 100
+
+# ============================================================
+# Optimization
+# ============================================================
+optimizer: adamw_torch
+weight_decay: 0.01
+max_grad_norm: 1.0
+
+# ============================================================
+# Mixed Precision
+# ============================================================
+bf16: true
+fp16: false
+tf32: true  # Enable TF32 for H100 Tensor Cores
+
+# ============================================================
+# Gradient Checkpointing
+# ============================================================
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+
+# ============================================================
+# Attention Optimization
+# ============================================================
+flash_attention: true  # H100 supports Flash Attention 2
+xformers_attention: false
+s2_attention: false
+
+# ============================================================
+# Logging and Checkpointing
+# ============================================================
+output_dir: ./adapters/weatherman-lora-axolotl-h100
+save_strategy: steps
+save_steps: 500
+save_total_limit: 3  # Keep only 3 most recent checkpoints
+logging_steps: 10
+eval_steps: 500
+eval_strategy: steps
+
+# ============================================================
+# Weights & Biases Integration
+# ============================================================
+wandb_project: weatherman-lora
+wandb_run_id: weatherman-axolotl-h100
+wandb_log_model: false
+wandb_watch: false
+
+# ============================================================
+# HuggingFace Hub (optional)
+# ============================================================
+# Uncomment to push to HuggingFace Hub
+# hub_model_id: your-username/weatherman-lora-h100
+# push_dataset_to_hub: false
+# hub_strategy: checkpoint
+
+# ============================================================
+# Device Configuration
+# ============================================================
+local_rank:
+device: cuda
+device_map: auto
+
+# ============================================================
+# Special Tokens (Mistral v0.3)
+# ============================================================
+special_tokens:
+  pad_token: "<pad>"
+  bos_token: "<s>"
+  eos_token: "</s>"
+  unk_token: "<unk>"
+
+# ============================================================
+# Training Efficiency Settings
+# ============================================================
+# DeepSpeed (optional, for multi-GPU)
+# deepspeed: deepspeed_configs/zero2.json
+
+# Early stopping (optional)
+early_stopping_patience: 3
+
+# Resume from checkpoint
+resume_from_checkpoint:
+
+# ============================================================
+# Data Processing
+# ============================================================
+# Disable sample packing for tool calling format
+strict: false
+
+# ============================================================
+# Notes
+# ============================================================
+# Expected Training Time: 3-4 hours on H100 for 3 epochs
+# Memory Usage: ~60-70GB VRAM with QLoRA + gradient checkpointing
+# Dataset: 14,399 training examples, 1,601 validation examples
+#
+# Training Progress:
+# - Total steps per epoch: ~900 (14,399 / (4 * 4))
+# - Total steps: ~2,700 (3 epochs)
+# - Checkpoints saved every 500 steps
+# - Evaluation every 500 steps
+#
+# Monitor via:
+# - Weights & Biases dashboard
+# - Local logs in output_dir/logs/
