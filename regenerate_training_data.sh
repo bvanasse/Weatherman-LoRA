@@ -65,15 +65,15 @@ echo ""
 info "Regeneration Settings:"
 info "  Input: data/synthetic/final_train.jsonl"
 info "  Output: data/synthetic/final_train_diverse.jsonl"
-info "  Model: claude-sonnet-4-20250514 (latest)"
+info "  Model: claude-haiku-4-5 (latest Haiku - fast & cheap)"
 info "  Max templates per pattern: 100"
 info "  Literary corpus: data/processed/"
 echo ""
 
 warning "This will:"
 warning "  - Identify ~8,500 templated responses"
-warning "  - Regenerate them with Claude API (~$20-40 in API costs)"
-warning "  - Take approximately 3-4 hours to complete"
+warning "  - Regenerate them with Claude Haiku API (~$4-8 in API costs)"
+warning "  - Take approximately 1-2 hours to complete"
 warning "  - Support checkpoint recovery if interrupted"
 echo ""
 
@@ -95,7 +95,7 @@ python3 scripts/regenerate_diverse_responses.py \
     --corpus-path data/processed \
     --max-templates 100 \
     --checkpoint-interval 100 \
-    --model claude-sonnet-4-20250514
+    --model claude-haiku-4-5
 
 if [ $? -eq 0 ]; then
     echo ""

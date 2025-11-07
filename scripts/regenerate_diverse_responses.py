@@ -190,7 +190,7 @@ def regenerate_response(
     persona: str,
     style_examples: List[str],
     previous_responses: List[str],
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "claude-haiku-4-5"
 ) -> str:
     """Regenerate a single response using Claude API."""
 
@@ -226,7 +226,7 @@ def process_training_data(
     api_key: str,
     max_templates_per_pattern: int = 100,
     checkpoint_interval: int = 100,
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "claude-haiku-4-5"
 ):
     """Process training data and regenerate templated responses."""
 
@@ -383,8 +383,8 @@ def main():
                        help='Max examples to keep per template pattern')
     parser.add_argument('--checkpoint-interval', type=int, default=100,
                        help='Save checkpoint every N examples')
-    parser.add_argument('--model', type=str, default='claude-sonnet-4-20250514',
-                       choices=['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022'],
+    parser.add_argument('--model', type=str, default='claude-haiku-4-5',
+                       choices=['claude-haiku-4-5', 'claude-3-5-haiku-20241022', 'claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022'],
                        help='Claude model to use')
 
     args = parser.parse_args()
