@@ -13,8 +13,13 @@ trust_remote_code: true
 # ============================================================
 # Dataset Configuration
 # ============================================================
+# Using diverse training data (regenerated to remove repetitive templates)
+# - Original data had 59% template repetition
+# - Diverse data has <3% templates for better generalization
+# - See DATA_REGENERATION_GUIDE.md for details
+
 datasets:
-  - path: data/synthetic/final_train.jsonl
+  - path: data/synthetic/final_train_diverse.jsonl
     ds_type: json  # JSONL format
     type: chat_template  # Use chat template format (supports tool calls)
     field_messages: messages  # Field containing message array
@@ -24,7 +29,7 @@ datasets:
 # Validation Dataset
 val_set_size: 0  # We use a separate validation file
 test_datasets:
-  - path: data/synthetic/final_validation.jsonl
+  - path: data/synthetic/final_validation_diverse.jsonl
     ds_type: json
     type: chat_template
     field_messages: messages

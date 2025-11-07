@@ -15,8 +15,14 @@ This guide explains how to train the Weatherman-LoRA model using [Axolotl](https
 Your training data is in **OpenAI Chat Completions format with tool calls** - which Axolotl supports natively!
 
 **Files:**
-- `data/synthetic/final_train.jsonl` (14,399 examples)
-- `data/synthetic/final_validation.jsonl` (1,601 examples)
+- `data/synthetic/final_train_diverse.jsonl` (14,399 examples)
+- `data/synthetic/final_validation_diverse.jsonl` (1,601 examples)
+
+**Data Quality:**
+- ✨ **Diverse responses** - Regenerated to remove repetitive templates
+- Original data had 59% template repetition
+- New diverse data has <3% templates for better generalization
+- See [DATA_REGENERATION_GUIDE.md](DATA_REGENERATION_GUIDE.md) for full details
 
 **Format:**
 ```json
@@ -30,6 +36,34 @@ Your training data is in **OpenAI Chat Completions format with tool calls** - wh
   ]
 }
 ```
+
+## Before You Train
+
+### Verify Data Quality
+
+Before starting training, verify that you have the diverse dataset:
+
+```bash
+# Check if diverse dataset exists
+ls -lh data/synthetic/final_train_diverse.jsonl
+
+# If it doesn't exist, you need to run regeneration first
+# See DATA_REGENERATION_GUIDE.md for instructions
+
+# Verify diversity metrics
+python3 scripts/analyze_data_diversity.py data/synthetic/final_train_diverse.jsonl
+
+# Should show:
+# - Total templated: <3% (good!)
+# - Diversity score: 90+/100 (excellent!)
+```
+
+**If you see high template percentage (>10%)**: You need to regenerate the data. Run:
+```bash
+./regenerate_training_data.sh
+```
+
+This will take ~3-4 hours and cost ~$70 in Claude API usage, but it's crucial for training a high-quality model.
 
 ## Quick Start
 
