@@ -28,6 +28,8 @@ data/synthetic/*
 # Allow final training data files
 !data/synthetic/final_train.jsonl
 !data/synthetic/final_validation.jsonl
+!data/synthetic/final_train_diverse.jsonl
+!data/synthetic/final_validation_diverse.jsonl
 !data/synthetic/merge_metadata.json
 
 # Model files (large files)
