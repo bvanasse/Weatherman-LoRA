@@ -214,8 +214,13 @@ info "Installed PyTorch version: $TORCH_VERSION"
 
 if [[ "$TORCH_VERSION" == "2.6.0"* ]] || [[ "$TORCH_VERSION" == "2.6"* ]]; then
     info "PyTorch 2.6.x detected - upgrading accelerate for compatibility..."
-    pip install --upgrade accelerate
-    success "Accelerate upgraded successfully"
+
+    # Use python -m pip to ensure we're using the active environment
+    python -m pip install --upgrade accelerate
+
+    # Verify the accelerate version in the active environment
+    ACCEL_VERSION=$(python -m pip show accelerate | grep "Version:" | cut -d " " -f 2 2>/dev/null || echo "unknown")
+    success "Accelerate upgraded to $ACCEL_VERSION in active environment"
 else
     info "PyTorch version compatible with current accelerate"
 fi
