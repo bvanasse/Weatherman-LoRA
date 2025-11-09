@@ -207,6 +207,14 @@ fi
 
 echo ""
 
+# Ensure accelerate is compatible with current torch version
+TORCH_VERSION=$(python -c "import torch; print(torch.__version__)" 2>/dev/null || echo "unknown")
+if [[ "$TORCH_VERSION" == "2.6.0"* ]]; then
+    info "Torch 2.6.0 detected, ensuring accelerate is up to date..."
+    pip install --upgrade accelerate >/dev/null 2>&1
+    success "Accelerate updated for torch 2.6.0 compatibility"
+fi
+
 # Check if there's a checkpoint to resume from
 CHECKPOINT_DIR="adapters/weatherman-lora-axolotl-h100"
 
