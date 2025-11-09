@@ -13,6 +13,7 @@
 # Usage: ./train_with_axolotl_h100.sh
 
 set -e  # Exit on error
+set -o pipefail
 
 # Color codes for output
 RED='\033[0;31m'
@@ -58,6 +59,15 @@ if [ -z "$CONDA_DEFAULT_ENV" ] || [ "$CONDA_DEFAULT_ENV" != "weatherman-lora" ];
         exit 1
     fi
 fi
+
+# Fast-path environment settings (caches and logging)
+export HF_HOME=${HF_HOME:-$HOME/.cache/huggingface}
+export HUGGINGFACE_HUB_CACHE=${HUGGINGFACE_HUB_CACHE:-$HF_HOME/hub}
+export TRANSFORMERS_CACHE=${TRANSFORMERS_CACHE:-$HF_HOME/transformers}
+export WANDB_DISABLED=${WANDB_DISABLED:-true}
+export BITSANDBYTES_NOWELCOME=1
+export PYTORCH_CUDA_ALLOC_CONF=${PYTORCH_CUDA_ALLOC_CONF:-max_split_size_mb:256,expandable_segments:true}
+ulimit -n 4096 || true
 
 # Verify Axolotl config exists
 CONFIG_FILE="axolotl_config_h100.yaml"
@@ -196,12 +206,12 @@ else
     # PyTorch will be installed by Axolotl, so skip verification here
     info "PyTorch will be installed by Axolotl with compatible versions"
 
-    # Step 2: Install Axolotl with DeepSpeed (this installs torch and all dependencies)
+    # Step 2: Install Axolotl with DeepSpeed and Flash-Attn (installs torch and deps)
     info "Installing Axolotl with DeepSpeed (this may take several minutes)..."
     info "This will also install compatible versions of torch, transformers, etc."
     
     # Install Axolotl - it will handle all dependencies including torch
-    if $PIP_CMD install "axolotl[deepspeed]"; then
+    if $PIP_CMD install --no-build-isolation "axolotl[flash-attn,deepspeed]"; then
         success "Axolotl installation completed"
     else
         warning "Installation had warnings, but continuing..."
@@ -218,73 +228,19 @@ else
         exit 1
     fi
     
-    # Verify PyTorch is now available
+    # Verify PyTorch is now available (non-fatal)
     info "Verifying PyTorch installation..."
-    if $PYTHON_CMD -c "import torch" 2>/dev/null; then
-        TORCH_VERSION=$($PYTHON_CMD -c "import torch; print(torch.__version__)" 2>/dev/null || echo "unknown")
+    if $PYTHON_CMD -c "import torch; import sys; sys.stdout.write(getattr(torch, '__version__', 'unknown'))" 2>/dev/null; then
+        TORCH_VERSION=$($PYTHON_CMD -c "import torch; import sys; sys.stdout.write(getattr(torch, '__version__', 'unknown'))" 2>/dev/null || echo "unknown")
         success "PyTorch installed (version: $TORCH_VERSION)"
-        
-        # Check CUDA availability (non-fatal)
-        if $PYTHON_CMD -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'" 2>/dev/null; then
-            GPU_NAME=$($PYTHON_CMD -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown")
-            success "CUDA is available: $GPU_NAME"
-        else
-            warning "CUDA check failed, but continuing (may be a detection issue)"
-            info "Training will proceed and verify CUDA at runtime."
-        fi
     else
-        warning "PyTorch import failed, but Axolotl is installed"
-        info "Training may install PyTorch at runtime if needed"
-    fi
-    
-    # Step 3: Try to install flash-attn if torch is available
-    if $PYTHON_CMD -c "import torch" 2>/dev/null; then
-        info "Installing Flash Attention (this may take 5-10 minutes)..."
-        $PIP_CMD install flash-attn==2.8.2 --no-build-isolation || {
-            warning "Flash Attention installation failed, continuing without it..."
-            warning "Training will be slower but should still work"
-        }
-    else
-        warning "Skipping Flash Attention installation (torch not available)"
-        info "Flash Attention can be installed later if needed"
+        warning "PyTorch import failed, continuing"
     fi
 fi
 
 echo ""
 
-# Ensure compatible package versions
-info "Checking package compatibility..."
-
-# Check and upgrade PEFT if needed (common compatibility issue)
-PEFT_VERSION=$($PIP_CMD show peft 2>/dev/null | grep "Version:" | cut -d " " -f 2 || echo "not installed")
-if [ -n "$PEFT_VERSION" ] && [ "$PEFT_VERSION" != "not installed" ]; then
-    info "PEFT version: $PEFT_VERSION"
-    # Upgrade to latest PEFT for compatibility
-    $PIP_CMD install --upgrade peft
-    success "PEFT upgraded to latest version"
-else
-    info "Installing PEFT..."
-    $PIP_CMD install peft
-    success "PEFT installed"
-fi
-
-# Ensure accelerate is up to date
-info "Checking accelerate..."
-$PIP_CMD install --upgrade accelerate
-ACCEL_VERSION=$($PIP_CMD show accelerate 2>/dev/null | grep "Version:" | cut -d " " -f 2 || echo "unknown")
-success "Accelerate version: $ACCEL_VERSION"
-
-# Ensure bitsandbytes is installed for QLoRA
-info "Checking bitsandbytes..."
-if ! $PYTHON_CMD -c "import bitsandbytes" 2>/dev/null; then
-    warning "bitsandbytes not found, installing..."
-    $PIP_CMD install bitsandbytes
-    success "bitsandbytes installed"
-else
-    success "bitsandbytes already installed"
-fi
-
-echo ""
+## Skip manual compatibility pinning; Axolotl managed dependencies are sufficient
 
 # Check GPU availability
 info "Checking GPU availability..."
