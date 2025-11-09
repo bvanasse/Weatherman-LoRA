@@ -123,11 +123,34 @@ info "Python path: $PYTHON_PATH"
 # This ensures we install to the correct Python environment
 PIP_CMD="$PYTHON_CMD -m pip"
 
-# Verify pip works
+# Verify pip works, install if needed
 if ! $PIP_CMD --version &>/dev/null; then
-    error "pip not found for Python $PYTHON_CMD"
-    error "Try: $PYTHON_CMD -m ensurepip --upgrade"
-    exit 1
+    warning "pip not found for Python $PYTHON_CMD"
+    info "Installing pip..."
+    
+    # Try to install pip using ensurepip
+    if $PYTHON_CMD -m ensurepip --upgrade 2>/dev/null; then
+        success "pip installed via ensurepip"
+    # Fallback: use conda to install pip
+    elif command -v conda &> /dev/null; then
+        info "Installing pip via conda..."
+        conda install -y pip || {
+            error "Failed to install pip"
+            exit 1
+        }
+        success "pip installed via conda"
+    else
+        error "Cannot install pip. Please install it manually:"
+        error "  conda install pip"
+        error "  OR: $PYTHON_CMD -m ensurepip --upgrade"
+        exit 1
+    fi
+    
+    # Verify pip is now available
+    if ! $PIP_CMD --version &>/dev/null; then
+        error "pip installation failed"
+        exit 1
+    fi
 fi
 
 PIP_VERSION=$($PIP_CMD --version 2>&1)
