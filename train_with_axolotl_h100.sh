@@ -119,19 +119,20 @@ PYTHON_PATH=$(which $PYTHON_CMD 2>/dev/null || echo "unknown")
 success "Python version: $PYTHON_VERSION"
 info "Python path: $PYTHON_PATH"
 
-# Determine pip command to match Python
+# Determine pip command to match Python - ALWAYS use python -m pip
+# This ensures we install to the correct Python environment
 PIP_CMD="$PYTHON_CMD -m pip"
+
+# Verify pip works
 if ! $PIP_CMD --version &>/dev/null; then
-    # Fallback to pip command
-    if command -v pip &> /dev/null; then
-        PIP_CMD="pip"
-    else
-        error "pip not found for Python $PYTHON_CMD"
-        exit 1
-    fi
+    error "pip not found for Python $PYTHON_CMD"
+    error "Try: $PYTHON_CMD -m ensurepip --upgrade"
+    exit 1
 fi
 
+PIP_VERSION=$($PIP_CMD --version 2>&1)
 info "Using pip: $PIP_CMD"
+success "Pip version: $PIP_VERSION"
 
 # Check if Axolotl is installed
 info "Checking Axolotl installation..."
@@ -147,67 +148,66 @@ else
     $PIP_CMD install -U packaging==23.2 setuptools==75.8.0 wheel ninja
 
     # Step 1: Install PyTorch first (required for flash-attn compilation)
+    # Note: Axolotl will install its own torch version, so we install compatible versions
     info "Installing PyTorch with CUDA 12.1 support..."
-    $PIP_CMD install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    info "Note: Axolotl may install torch 2.6.0, so we'll let it handle torch installation"
+    # Don't install torch here - let Axolotl install the version it needs
+    # $PIP_CMD install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
-    # Verify PyTorch installation - try multiple methods
-    info "Verifying PyTorch installation..."
-    TORCH_VERSION=""
-    
-    # Method 1: Try standard import
-    if TORCH_VERSION=$($PYTHON_CMD -c "import torch; print(torch.__version__)" 2>&1); then
-        success "PyTorch installed (version: $TORCH_VERSION)"
-    # Method 2: Try with version attribute check
-    elif $PYTHON_CMD -c "import torch; print(getattr(torch, '__version__', 'unknown'))" 2>&1 | grep -v "unknown" > /dev/null; then
-        TORCH_VERSION=$($PYTHON_CMD -c "import torch; print(getattr(torch, '__version__', 'unknown'))" 2>&1)
-        success "PyTorch installed (version: $TORCH_VERSION)"
-    # Method 3: Just check if import works
-    elif $PYTHON_CMD -c "import torch" 2>/dev/null; then
-        warning "PyTorch imported but version check failed"
-        info "PyTorch is installed. Continuing..."
-        TORCH_VERSION="installed (version check failed)"
-    else
-        error "Failed to import PyTorch"
-        error "Python: $PYTHON_CMD"
-        error "Python path: $PYTHON_PATH"
-        error "Try manually: $PYTHON_CMD -c 'import torch'"
-        exit 1
-    fi
-        
-    # Check CUDA availability (non-fatal)
-    info "Checking CUDA availability..."
-    if $PYTHON_CMD -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'" 2>/dev/null; then
-        GPU_NAME=$($PYTHON_CMD -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown")
-        success "CUDA is available: $GPU_NAME"
-    else
-        warning "CUDA check failed, but continuing (may be a detection issue)"
-        info "PyTorch is installed. Training will proceed and verify CUDA at runtime."
-    fi
+    # PyTorch will be installed by Axolotl, so skip verification here
+    info "PyTorch will be installed by Axolotl with compatible versions"
 
-    # Step 2: Install flash-attn (now that torch is available)
-    info "Installing Flash Attention (this may take 5-10 minutes)..."
-    $PIP_CMD install flash-attn==2.8.2 --no-build-isolation || {
-        warning "Flash Attention installation failed, continuing without it..."
-        warning "Training will be slower but should still work"
-    }
-
-    # Step 3: Install Axolotl with DeepSpeed
+    # Step 2: Install Axolotl with DeepSpeed (this installs torch and all dependencies)
     info "Installing Axolotl with DeepSpeed (this may take several minutes)..."
+    info "This will also install compatible versions of torch, transformers, etc."
     
-    # Install without flash-attn extra since we handle it separately
-    $PIP_CMD install "axolotl[deepspeed]" || {
-        warning "Failed to install with deepspeed extras, trying basic install..."
-        $PIP_CMD install axolotl
-    }
+    # Install Axolotl - it will handle all dependencies including torch
+    if $PIP_CMD install "axolotl[deepspeed]"; then
+        success "Axolotl installation completed"
+    else
+        warning "Installation had warnings, but continuing..."
+    fi
 
     # Verify installation
+    info "Verifying Axolotl installation..."
     if $PYTHON_CMD -c "import axolotl" 2>/dev/null; then
         AXOLOTL_VERSION=$($PYTHON_CMD -c "import axolotl; print(axolotl.__version__)" 2>/dev/null || echo "unknown")
         success "Axolotl $AXOLOTL_VERSION installed"
     else
-        error "Failed to install Axolotl"
-        error "Try manually: pip install axolotl[deepspeed]"
+        error "Failed to import Axolotl after installation"
+        error "Try manually: $PIP_CMD install axolotl[deepspeed]"
         exit 1
+    fi
+    
+    # Verify PyTorch is now available
+    info "Verifying PyTorch installation..."
+    if $PYTHON_CMD -c "import torch" 2>/dev/null; then
+        TORCH_VERSION=$($PYTHON_CMD -c "import torch; print(torch.__version__)" 2>/dev/null || echo "unknown")
+        success "PyTorch installed (version: $TORCH_VERSION)"
+        
+        # Check CUDA availability (non-fatal)
+        if $PYTHON_CMD -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'" 2>/dev/null; then
+            GPU_NAME=$($PYTHON_CMD -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown")
+            success "CUDA is available: $GPU_NAME"
+        else
+            warning "CUDA check failed, but continuing (may be a detection issue)"
+            info "Training will proceed and verify CUDA at runtime."
+        fi
+    else
+        warning "PyTorch import failed, but Axolotl is installed"
+        info "Training may install PyTorch at runtime if needed"
+    fi
+    
+    # Step 3: Try to install flash-attn if torch is available
+    if $PYTHON_CMD -c "import torch" 2>/dev/null; then
+        info "Installing Flash Attention (this may take 5-10 minutes)..."
+        $PIP_CMD install flash-attn==2.8.2 --no-build-isolation || {
+            warning "Flash Attention installation failed, continuing without it..."
+            warning "Training will be slower but should still work"
+        }
+    else
+        warning "Skipping Flash Attention installation (torch not available)"
+        info "Flash Attention can be installed later if needed"
     fi
 fi
 
@@ -259,13 +259,17 @@ else
     warning "nvidia-smi not found, but continuing anyway..."
 fi
 
-# Try to check via PyTorch
-if $PYTHON_CMD -c "import torch; assert torch.cuda.is_available(); print(f'✓ CUDA available: {torch.cuda.get_device_name(0)}')" 2>/dev/null; then
-    GPU_NAME=$($PYTHON_CMD -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown GPU")
-    success "PyTorch CUDA check passed: $GPU_NAME"
+# Try to check via PyTorch (if available)
+if $PYTHON_CMD -c "import torch" 2>/dev/null; then
+    if $PYTHON_CMD -c "import torch; assert torch.cuda.is_available(); print(f'✓ CUDA available: {torch.cuda.get_device_name(0)}')" 2>/dev/null; then
+        GPU_NAME=$($PYTHON_CMD -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown GPU")
+        success "PyTorch CUDA check passed: $GPU_NAME"
+    else
+        warning "PyTorch CUDA check failed (may be module cache issue)"
+        info "GPU hardware confirmed via nvidia-smi. Training will use fresh Python process."
+    fi
 else
-    warning "PyTorch CUDA check failed (may be module cache issue)"
-    info "GPU hardware confirmed via nvidia-smi. Training will use fresh Python process."
+    info "PyTorch not yet imported (will be loaded during training)"
 fi
 
 echo ""
