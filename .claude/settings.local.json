@@ -69,7 +69,8 @@
       "Bash(if [ -f \"data/synthetic/final_train_diverse.jsonl\" ])",
       "Bash(then head -2 data/synthetic/final_train_diverse.jsonl)",
       "Bash(else echo \"File not found\")",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
