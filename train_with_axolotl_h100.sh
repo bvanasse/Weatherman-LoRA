@@ -140,8 +140,25 @@ else
     fi
 
     # Step 3: Install Axolotl with DeepSpeed (flash-attn already installed)
-    info "Installing Axolotl with DeepSpeed..."
-    pip install "axolotl[deepspeed]"
+    info "Installing Axolotl with DeepSpeed (this may take several minutes)..."
+
+    # Install without flash-attn extra since we already have it
+    if pip install "axolotl[deepspeed]"; then
+        success "Axolotl pip install completed"
+    else
+        error "Failed to install Axolotl via pip"
+        info "Trying without extras..."
+        pip install axolotl
+    fi
+
+    # Check if axolotl package is installed via pip
+    if pip show axolotl >/dev/null 2>&1; then
+        AXOLOTL_VER=$(pip show axolotl | grep "Version:" | cut -d " " -f 2)
+        success "Axolotl $AXOLOTL_VER package installed"
+    else
+        error "Axolotl package not found via pip show"
+        exit 1
+    fi
 
     # Check final torch version
     TORCH_VERSION=$(pip show torch | grep "Version:" | cut -d " " -f 2 2>/dev/null || echo "unknown")
@@ -151,15 +168,14 @@ else
     # This is expected and we don't downgrade it as it would break Axolotl
     # Any version warnings from pip can be ignored - the packages are compatible
 
-    # Verify installation
-    if python3 -B -c "import axolotl; print(f'Axolotl version: {axolotl.__version__}')" 2>&1; then
-        success "Axolotl installed successfully"
+    # Verify we can import axolotl
+    info "Verifying Axolotl import..."
+    if python3 -B -c "import axolotl; print(f'Axolotl {axolotl.__version__} imported successfully')" 2>&1; then
+        success "Axolotl verification passed"
     else
         error "Failed to import Axolotl"
-        info "Axolotl import failed. This might be due to missing dependencies."
-        info "Try manual installation:"
-        info "  pip install flash-attn --no-build-isolation"
-        info "  pip install axolotl[deepspeed]"
+        info "Package is installed but import failed. This may resolve on next Python session."
+        info "Try running the script again or manually test: python3 -c 'import axolotl'"
         exit 1
     fi
 fi
