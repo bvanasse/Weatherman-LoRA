@@ -90,46 +90,43 @@ if python -c "import axolotl" 2>/dev/null; then
 else
     warning "Axolotl not found. Installing..."
 
-    # Check if PyTorch 2.6.0 is installed (required by Axolotl)
-    TORCH_INSTALLED=false
-    if python -c "import torch; assert torch.__version__.startswith('2.6.'); assert torch.cuda.is_available()" 2>/dev/null; then
-        TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
-        success "PyTorch $TORCH_VERSION already installed (compatible with Axolotl)"
-        TORCH_INSTALLED=true
+    # Clean up any existing broken installations
+    if python -c "import torch" 2>/dev/null; then
+        warning "Removing existing PyTorch installation..."
+        pip uninstall -y torch torchvision torchaudio 2>/dev/null || true
     fi
 
-    if [ "$TORCH_INSTALLED" = false ]; then
-        if python -c "import torch" 2>/dev/null; then
-            warning "Incompatible PyTorch found, reinstalling..."
-            pip uninstall -y torch torchvision torchaudio 2>/dev/null || true
-        fi
-
-        # Install PyTorch 2.6.0 (required by Axolotl 0.12.2)
-        # Use CUDA 12.1 build which is compatible with CUDA 12.x
-        info "Installing PyTorch 2.6.0 with CUDA 12.1 (required by Axolotl)..."
-        pip install torch==2.6.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-        if python -c "import torch; print(torch.__version__); assert torch.cuda.is_available()" 2>/dev/null; then
-            TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
-            success "PyTorch $TORCH_VERSION installed successfully"
-        else
-            error "Failed to install PyTorch 2.6.0"
-            info "Check that CUDA is properly installed and accessible"
-            exit 1
-        fi
-    fi
-
-    # Install build dependencies
+    # Install build dependencies first
     info "Installing build dependencies..."
     pip install packaging ninja
 
-    # Install flash-attn separately (requires torch to be installed first)
-    info "Installing Flash Attention (this may take 5-10 minutes)..."
-    pip install flash-attn --no-build-isolation
+    # Install Axolotl which will pull in compatible torch version
+    # Use --no-cache-dir to ensure we get fresh packages
+    info "Installing Axolotl with dependencies (this may take several minutes)..."
+    info "Axolotl will install its required PyTorch version..."
+    pip install --no-cache-dir "axolotl[flash-attn,deepspeed]"
 
-    # Install Axolotl with DeepSpeed
-    info "Installing Axolotl..."
-    pip install axolotl[deepspeed]
+    # Verify PyTorch installation
+    if python -c "import torch; print(torch.__version__); assert torch.cuda.is_available()" 2>/dev/null; then
+        TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
+        success "PyTorch $TORCH_VERSION installed successfully"
+    else
+        error "PyTorch installation failed or CUDA not available"
+        info "Trying alternative installation method..."
+
+        # Fallback: Install PyTorch manually with latest stable
+        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+        pip install flash-attn --no-build-isolation
+        pip install axolotl[deepspeed]
+
+        if python -c "import torch; assert torch.cuda.is_available()" 2>/dev/null; then
+            TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
+            success "PyTorch $TORCH_VERSION installed via fallback method"
+        else
+            error "Failed to install PyTorch with CUDA support"
+            exit 1
+        fi
+    fi
 
     if python -c "import axolotl" 2>/dev/null; then
         success "Axolotl installed successfully"
