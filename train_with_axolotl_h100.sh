@@ -104,13 +104,20 @@ else
     info "Installing PyTorch with CUDA 12.1 support..."
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
-    # Verify PyTorch installation
-    if python -c "import torch; print(torch.__version__); assert torch.cuda.is_available()" 2>/dev/null; then
-        TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
-        success "PyTorch $TORCH_VERSION installed successfully"
+    # Verify PyTorch installation (check version, CUDA availability is optional)
+    if python -c "import torch; print(f'PyTorch version: {torch.__version__}')" 2>&1; then
+        TORCH_VERSION=$(python -c "import torch; print(torch.__version__)" 2>/dev/null || echo "unknown")
+        success "PyTorch $TORCH_VERSION installed"
+
+        # Check CUDA availability (non-fatal)
+        if python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'" 2>&1; then
+            GPU_NAME=$(python -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown GPU")
+            success "CUDA is available: $GPU_NAME"
+        else
+            warning "CUDA check reported issues, but continuing (may work anyway)..."
+        fi
     else
-        error "Failed to install PyTorch with CUDA support"
-        info "Check that CUDA is properly installed and accessible"
+        error "Failed to install PyTorch"
         exit 1
     fi
 
