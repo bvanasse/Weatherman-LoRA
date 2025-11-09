@@ -90,8 +90,15 @@ success "Training data verified ($TRAIN_COUNT examples)"
 success "Validation data verified ($VAL_COUNT examples)"
 echo ""
 
-# Determine Python command (python3 or python)
-if command -v python3 &> /dev/null; then
+# Determine Python command - prefer conda environment's Python
+# This ensures we use the same Python that pip installs to
+if [ -n "$CONDA_DEFAULT_ENV" ]; then
+    # Use conda's python if in conda environment
+    PYTHON_CMD=$(which python)
+    if [ -z "$PYTHON_CMD" ]; then
+        PYTHON_CMD=$(which python3)
+    fi
+elif command -v python3 &> /dev/null; then
     PYTHON_CMD="python3"
 elif command -v python &> /dev/null; then
     PYTHON_CMD="python"
@@ -100,9 +107,31 @@ else
     exit 1
 fi
 
+# Verify Python can be executed
+if ! $PYTHON_CMD --version &>/dev/null; then
+    error "Python command '$PYTHON_CMD' is not executable"
+    exit 1
+fi
+
 info "Using Python: $PYTHON_CMD"
 PYTHON_VERSION=$($PYTHON_CMD --version 2>&1)
+PYTHON_PATH=$(which $PYTHON_CMD 2>/dev/null || echo "unknown")
 success "Python version: $PYTHON_VERSION"
+info "Python path: $PYTHON_PATH"
+
+# Determine pip command to match Python
+PIP_CMD="$PYTHON_CMD -m pip"
+if ! $PIP_CMD --version &>/dev/null; then
+    # Fallback to pip command
+    if command -v pip &> /dev/null; then
+        PIP_CMD="pip"
+    else
+        error "pip not found for Python $PYTHON_CMD"
+        exit 1
+    fi
+fi
+
+info "Using pip: $PIP_CMD"
 
 # Check if Axolotl is installed
 info "Checking Axolotl installation..."
@@ -115,36 +144,49 @@ else
     
     # Install build dependencies first
     info "Installing build dependencies..."
-    pip install -U packaging==23.2 setuptools==75.8.0 wheel ninja
+    $PIP_CMD install -U packaging==23.2 setuptools==75.8.0 wheel ninja
 
     # Step 1: Install PyTorch first (required for flash-attn compilation)
     info "Installing PyTorch with CUDA 12.1 support..."
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    $PIP_CMD install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
-    # Verify PyTorch installation
+    # Verify PyTorch installation - try multiple methods
     info "Verifying PyTorch installation..."
-    if $PYTHON_CMD -c "import torch; print('PyTorch', torch.__version__)" 2>&1; then
-        TORCH_VERSION=$($PYTHON_CMD -c "import torch; print(torch.__version__)" 2>/dev/null || echo "unknown")
+    TORCH_VERSION=""
+    
+    # Method 1: Try standard import
+    if TORCH_VERSION=$($PYTHON_CMD -c "import torch; print(torch.__version__)" 2>&1); then
         success "PyTorch installed (version: $TORCH_VERSION)"
-        
-        # Check CUDA availability (non-fatal)
-        info "Checking CUDA availability..."
-        if $PYTHON_CMD -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'" 2>/dev/null; then
-            GPU_NAME=$($PYTHON_CMD -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown")
-            success "CUDA is available: $GPU_NAME"
-        else
-            warning "CUDA check failed, but continuing (may be a detection issue)"
-            info "PyTorch is installed. Training will proceed and verify CUDA at runtime."
-        fi
+    # Method 2: Try with version attribute check
+    elif $PYTHON_CMD -c "import torch; print(getattr(torch, '__version__', 'unknown'))" 2>&1 | grep -v "unknown" > /dev/null; then
+        TORCH_VERSION=$($PYTHON_CMD -c "import torch; print(getattr(torch, '__version__', 'unknown'))" 2>&1)
+        success "PyTorch installed (version: $TORCH_VERSION)"
+    # Method 3: Just check if import works
+    elif $PYTHON_CMD -c "import torch" 2>/dev/null; then
+        warning "PyTorch imported but version check failed"
+        info "PyTorch is installed. Continuing..."
+        TORCH_VERSION="installed (version check failed)"
     else
-        error "Failed to verify PyTorch installation"
-        error "Try manually: $PYTHON_CMD -c 'import torch; print(torch.__version__)'"
+        error "Failed to import PyTorch"
+        error "Python: $PYTHON_CMD"
+        error "Python path: $PYTHON_PATH"
+        error "Try manually: $PYTHON_CMD -c 'import torch'"
         exit 1
+    fi
+        
+    # Check CUDA availability (non-fatal)
+    info "Checking CUDA availability..."
+    if $PYTHON_CMD -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'" 2>/dev/null; then
+        GPU_NAME=$($PYTHON_CMD -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown")
+        success "CUDA is available: $GPU_NAME"
+    else
+        warning "CUDA check failed, but continuing (may be a detection issue)"
+        info "PyTorch is installed. Training will proceed and verify CUDA at runtime."
     fi
 
     # Step 2: Install flash-attn (now that torch is available)
     info "Installing Flash Attention (this may take 5-10 minutes)..."
-    pip install flash-attn==2.8.2 --no-build-isolation || {
+    $PIP_CMD install flash-attn==2.8.2 --no-build-isolation || {
         warning "Flash Attention installation failed, continuing without it..."
         warning "Training will be slower but should still work"
     }
@@ -153,9 +195,9 @@ else
     info "Installing Axolotl with DeepSpeed (this may take several minutes)..."
     
     # Install without flash-attn extra since we handle it separately
-    pip install "axolotl[deepspeed]" || {
+    $PIP_CMD install "axolotl[deepspeed]" || {
         warning "Failed to install with deepspeed extras, trying basic install..."
-        pip install axolotl
+        $PIP_CMD install axolotl
     }
 
     # Verify installation
@@ -175,29 +217,29 @@ echo ""
 info "Checking package compatibility..."
 
 # Check and upgrade PEFT if needed (common compatibility issue)
-PEFT_VERSION=$(pip show peft 2>/dev/null | grep "Version:" | cut -d " " -f 2 || echo "not installed")
+PEFT_VERSION=$($PIP_CMD show peft 2>/dev/null | grep "Version:" | cut -d " " -f 2 || echo "not installed")
 if [ -n "$PEFT_VERSION" ] && [ "$PEFT_VERSION" != "not installed" ]; then
     info "PEFT version: $PEFT_VERSION"
     # Upgrade to latest PEFT for compatibility
-    pip install --upgrade peft
+    $PIP_CMD install --upgrade peft
     success "PEFT upgraded to latest version"
 else
     info "Installing PEFT..."
-    pip install peft
+    $PIP_CMD install peft
     success "PEFT installed"
 fi
 
 # Ensure accelerate is up to date
 info "Checking accelerate..."
-pip install --upgrade accelerate
-ACCEL_VERSION=$(pip show accelerate 2>/dev/null | grep "Version:" | cut -d " " -f 2 || echo "unknown")
+$PIP_CMD install --upgrade accelerate
+ACCEL_VERSION=$($PIP_CMD show accelerate 2>/dev/null | grep "Version:" | cut -d " " -f 2 || echo "unknown")
 success "Accelerate version: $ACCEL_VERSION"
 
 # Ensure bitsandbytes is installed for QLoRA
 info "Checking bitsandbytes..."
 if ! $PYTHON_CMD -c "import bitsandbytes" 2>/dev/null; then
     warning "bitsandbytes not found, installing..."
-    pip install bitsandbytes
+    $PIP_CMD install bitsandbytes
     success "bitsandbytes installed"
 else
     success "bitsandbytes already installed"
