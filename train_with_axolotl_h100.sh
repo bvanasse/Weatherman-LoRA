@@ -123,32 +123,50 @@ info "Python path: $PYTHON_PATH"
 # This ensures we install to the correct Python environment
 PIP_CMD="$PYTHON_CMD -m pip"
 
-# Verify pip works, install if needed
-if ! $PIP_CMD --version &>/dev/null; then
+# Verify pip works - check both command and import
+PIP_AVAILABLE=false
+if $PIP_CMD --version &>/dev/null 2>&1; then
+    PIP_AVAILABLE=true
+elif $PYTHON_CMD -c "import pip" 2>/dev/null; then
+    # pip module is importable even if command fails
+    PIP_AVAILABLE=true
+    warning "pip command check failed but module is importable"
+    info "Continuing with python -m pip"
+fi
+
+# Install pip if not available
+if [ "$PIP_AVAILABLE" = false ]; then
     warning "pip not found for Python $PYTHON_CMD"
     info "Installing pip..."
     
     # Try to install pip using ensurepip
-    if $PYTHON_CMD -m ensurepip --upgrade 2>/dev/null; then
-        success "pip installed via ensurepip"
-    # Fallback: use conda to install pip
-    elif command -v conda &> /dev/null; then
-        info "Installing pip via conda..."
-        conda install -y pip || {
-            error "Failed to install pip"
-            exit 1
-        }
-        success "pip installed via conda"
-    else
-        error "Cannot install pip. Please install it manually:"
-        error "  conda install pip"
-        error "  OR: $PYTHON_CMD -m ensurepip --upgrade"
-        exit 1
+    if $PYTHON_CMD -m ensurepip --upgrade 2>&1 | grep -q "Requirement already satisfied\|Successfully installed"; then
+        # ensurepip reports pip is installed/available
+        success "pip should be available (ensurepip reports installed)"
+        # Verify it works now
+        if $PIP_CMD --version &>/dev/null 2>&1 || $PYTHON_CMD -c "import pip" 2>/dev/null; then
+            PIP_AVAILABLE=true
+        fi
     fi
     
-    # Verify pip is now available
-    if ! $PIP_CMD --version &>/dev/null; then
-        error "pip installation failed"
+    # If still not available, try conda (but only if really needed)
+    if [ "$PIP_AVAILABLE" = false ] && command -v conda &> /dev/null; then
+        warning "pip still not available, trying conda..."
+        warning "Note: This may require accepting conda Terms of Service"
+        conda install -y pip 2>/dev/null && PIP_AVAILABLE=true || {
+            error "Failed to install pip via conda"
+            error "You may need to accept conda TOS first:"
+            error "  conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main"
+            error "Then run: conda install pip"
+            exit 1
+        }
+    fi
+    
+    # Final check
+    if [ "$PIP_AVAILABLE" = false ]; then
+        error "pip installation failed. Please install manually:"
+        error "  conda install pip"
+        error "  OR: $PYTHON_CMD -m ensurepip --upgrade"
         exit 1
     fi
 fi
