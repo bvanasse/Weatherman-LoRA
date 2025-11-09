@@ -40,8 +40,8 @@ test_datasets:
 # ============================================================
 # Chat Template
 # ============================================================
-# Use Mistral's chat template for proper formatting
-chat_template: mistral
+# Use Mistral's built-in chat template (auto-detected from tokenizer)
+# chat_template: mistral
 
 # ============================================================
 # LoRA Configuration
@@ -128,7 +128,7 @@ eval_strategy: steps
 # Weights & Biases Integration
 # ============================================================
 wandb_project: weatherman-lora
-wandb_run_id: weatherman-axolotl-h100
+wandb_entity:
 wandb_log_model: false
 wandb_watch: false
 
@@ -148,11 +148,12 @@ device_map: auto
 # ============================================================
 # Special Tokens (Mistral v0.3)
 # ============================================================
-special_tokens:
-  pad_token: "<pad>"
-  bos_token: "<s>"
-  eos_token: "</s>"
-  unk_token: "<unk>"
+# Use model's built-in special tokens (auto-detected from tokenizer)
+# special_tokens:
+#   pad_token: "<pad>"
+#   bos_token: "<s>"
+#   eos_token: "</s>"
+#   unk_token: "<unk>"
 
 # ============================================================
 # Training Efficiency Settings
@@ -164,7 +165,7 @@ special_tokens:
 early_stopping_patience: 3
 
 # Resume from checkpoint (leave empty/null for new training)
-resume_from_checkpoint:
+# resume_from_checkpoint:
 
 # ============================================================
 # Data Processing

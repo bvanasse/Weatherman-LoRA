@@ -194,9 +194,17 @@ tail -50 logs/axolotl_*.log | grep -i error
 
 # Common issues:
 # - Data files missing: Check data/synthetic/ exists
-# - Config invalid: Verify axolotl_config_h100.yaml
+# - Config invalid: Run ./check_gpu.sh to validate config
 # - GPU memory: Check with nvidia-smi
+
+# Validate config syntax
+./check_gpu.sh
 ```
+
+**Note**: The config has been updated to remove fields that caused Pydantic validation errors:
+- Removed `wandb_run_id` (replaced with `wandb_entity`)
+- Commented out `resume_from_checkpoint`, `chat_template`, and `special_tokens`
+- These will auto-detect from the model's tokenizer
 
 ### Out of Memory
 
