@@ -90,11 +90,25 @@ success "Training data verified ($TRAIN_COUNT examples)"
 success "Validation data verified ($VAL_COUNT examples)"
 echo ""
 
+# Determine Python command (python3 or python)
+if command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+elif command -v python &> /dev/null; then
+    PYTHON_CMD="python"
+else
+    error "Python not found. Please install Python 3.11+"
+    exit 1
+fi
+
+info "Using Python: $PYTHON_CMD"
+PYTHON_VERSION=$($PYTHON_CMD --version 2>&1)
+success "Python version: $PYTHON_VERSION"
+
 # Check if Axolotl is installed
 info "Checking Axolotl installation..."
 
-if python -c "import axolotl" 2>/dev/null; then
-    AXOLOTL_VERSION=$(python -c "import axolotl; print(axolotl.__version__)" 2>/dev/null || echo "unknown")
+if $PYTHON_CMD -c "import axolotl" 2>/dev/null; then
+    AXOLOTL_VERSION=$($PYTHON_CMD -c "import axolotl; print(axolotl.__version__)" 2>/dev/null || echo "unknown")
     success "Axolotl installed (version: $AXOLOTL_VERSION)"
 else
     warning "Axolotl not found. Installing..."
@@ -108,18 +122,23 @@ else
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
     # Verify PyTorch installation
-    if python -c "import torch; print(f'PyTorch {torch.__version__}')" 2>/dev/null; then
-        success "PyTorch installed"
+    info "Verifying PyTorch installation..."
+    if $PYTHON_CMD -c "import torch; print('PyTorch', torch.__version__)" 2>&1; then
+        TORCH_VERSION=$($PYTHON_CMD -c "import torch; print(torch.__version__)" 2>/dev/null || echo "unknown")
+        success "PyTorch installed (version: $TORCH_VERSION)"
         
-        # Check CUDA availability
-        if python -c "import torch; assert torch.cuda.is_available()" 2>/dev/null; then
-            GPU_NAME=$(python -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown")
+        # Check CUDA availability (non-fatal)
+        info "Checking CUDA availability..."
+        if $PYTHON_CMD -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'" 2>/dev/null; then
+            GPU_NAME=$($PYTHON_CMD -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown")
             success "CUDA is available: $GPU_NAME"
         else
-            warning "CUDA check failed, but continuing..."
+            warning "CUDA check failed, but continuing (may be a detection issue)"
+            info "PyTorch is installed. Training will proceed and verify CUDA at runtime."
         fi
     else
         error "Failed to verify PyTorch installation"
+        error "Try manually: $PYTHON_CMD -c 'import torch; print(torch.__version__)'"
         exit 1
     fi
 
@@ -140,11 +159,12 @@ else
     }
 
     # Verify installation
-    if python -c "import axolotl" 2>/dev/null; then
-        AXOLOTL_VERSION=$(python -c "import axolotl; print(axolotl.__version__)" 2>/dev/null || echo "unknown")
+    if $PYTHON_CMD -c "import axolotl" 2>/dev/null; then
+        AXOLOTL_VERSION=$($PYTHON_CMD -c "import axolotl; print(axolotl.__version__)" 2>/dev/null || echo "unknown")
         success "Axolotl $AXOLOTL_VERSION installed"
     else
         error "Failed to install Axolotl"
+        error "Try manually: pip install axolotl[deepspeed]"
         exit 1
     fi
 fi
@@ -156,22 +176,31 @@ info "Checking package compatibility..."
 
 # Check and upgrade PEFT if needed (common compatibility issue)
 PEFT_VERSION=$(pip show peft 2>/dev/null | grep "Version:" | cut -d " " -f 2 || echo "not installed")
-if [ -n "$PEFT_VERSION" ]; then
+if [ -n "$PEFT_VERSION" ] && [ "$PEFT_VERSION" != "not installed" ]; then
     info "PEFT version: $PEFT_VERSION"
     # Upgrade to latest PEFT for compatibility
     pip install --upgrade peft
     success "PEFT upgraded to latest version"
+else
+    info "Installing PEFT..."
+    pip install peft
+    success "PEFT installed"
 fi
 
 # Ensure accelerate is up to date
+info "Checking accelerate..."
 pip install --upgrade accelerate
 ACCEL_VERSION=$(pip show accelerate 2>/dev/null | grep "Version:" | cut -d " " -f 2 || echo "unknown")
 success "Accelerate version: $ACCEL_VERSION"
 
 # Ensure bitsandbytes is installed for QLoRA
-if ! python -c "import bitsandbytes" 2>/dev/null; then
+info "Checking bitsandbytes..."
+if ! $PYTHON_CMD -c "import bitsandbytes" 2>/dev/null; then
     warning "bitsandbytes not found, installing..."
     pip install bitsandbytes
+    success "bitsandbytes installed"
+else
+    success "bitsandbytes already installed"
 fi
 
 echo ""
@@ -189,8 +218,8 @@ else
 fi
 
 # Try to check via PyTorch
-if python -c "import torch; assert torch.cuda.is_available(); print(f'✓ CUDA available: {torch.cuda.get_device_name(0)}')" 2>/dev/null; then
-    GPU_NAME=$(python -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown GPU")
+if $PYTHON_CMD -c "import torch; assert torch.cuda.is_available(); print(f'✓ CUDA available: {torch.cuda.get_device_name(0)}')" 2>/dev/null; then
+    GPU_NAME=$($PYTHON_CMD -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown GPU")
     success "PyTorch CUDA check passed: $GPU_NAME"
 else
     warning "PyTorch CUDA check failed (may be module cache issue)"
@@ -241,8 +270,9 @@ if command -v axolotl &> /dev/null; then
     axolotl train "$CONFIG_FILE" 2>&1 | tee "$LOG_FILE"
     TRAIN_EXIT_CODE=${PIPESTATUS[0]}
 else
-    # Fallback to accelerate launch
+    # Fallback to accelerate launch with explicit Python
     info "Using accelerate launch (axolotl CLI not found)..."
+    info "Command: accelerate launch -m axolotl.cli.train $CONFIG_FILE"
     accelerate launch -m axolotl.cli.train "$CONFIG_FILE" 2>&1 | tee "$LOG_FILE"
     TRAIN_EXIT_CODE=${PIPESTATUS[0]}
 fi
