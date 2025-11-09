@@ -34,8 +34,8 @@ fi
 success "Found config: $CONFIG_FILE"
 
 # Verify training data
-TRAIN_DATA="data/synthetic/final_train_diverse.jsonl"
-VAL_DATA="data/synthetic/final_validation_diverse.jsonl"
+TRAIN_DATA="data/synthetic/final_train_diverse_fixed.jsonl"
+VAL_DATA="data/synthetic/final_validation_diverse_fixed.jsonl"
 
 if [ ! -f "$TRAIN_DATA" ]; then
     error "Training data not found: $TRAIN_DATA"

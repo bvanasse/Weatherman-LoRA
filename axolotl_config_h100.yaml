@@ -20,7 +20,7 @@ trust_remote_code: true
 # - See DATA_REGENERATION_GUIDE.md for details
 
 datasets:
-  - path: data/synthetic/final_train_diverse.jsonl
+  - path: data/synthetic/final_train_diverse_fixed.jsonl
     ds_type: json
     type: chat_template
     field_messages: messages
@@ -30,7 +30,7 @@ datasets:
 # Validation Dataset
 val_set_size: 0  # We use a separate validation file
 test_datasets:
-  - path: data/synthetic/final_validation_diverse.jsonl
+  - path: data/synthetic/final_validation_diverse_fixed.jsonl
     ds_type: json
     type: chat_template
     field_messages: messages
