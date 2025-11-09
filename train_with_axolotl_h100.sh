@@ -128,10 +128,8 @@ PIP_AVAILABLE=false
 if $PIP_CMD --version &>/dev/null 2>&1; then
     PIP_AVAILABLE=true
 elif $PYTHON_CMD -c "import pip" 2>/dev/null; then
-    # pip module is importable even if command fails
+    # pip module is importable even if command fails; proceed quietly with python -m pip
     PIP_AVAILABLE=true
-    warning "pip command check failed but module is importable"
-    info "Continuing with python -m pip"
 fi
 
 # Install pip if not available
