@@ -208,11 +208,16 @@ fi
 echo ""
 
 # Ensure accelerate is compatible with current torch version
-TORCH_VERSION=$(python -c "import torch; print(torch.__version__)" 2>/dev/null || echo "unknown")
-if [[ "$TORCH_VERSION" == "2.6.0"* ]]; then
-    info "Torch 2.6.0 detected, ensuring accelerate is up to date..."
-    pip install --upgrade accelerate >/dev/null 2>&1
-    success "Accelerate updated for torch 2.6.0 compatibility"
+info "Checking PyTorch version for accelerate compatibility..."
+TORCH_VERSION=$(pip show torch | grep "Version:" | cut -d " " -f 2 2>/dev/null || echo "unknown")
+info "Installed PyTorch version: $TORCH_VERSION"
+
+if [[ "$TORCH_VERSION" == "2.6.0"* ]] || [[ "$TORCH_VERSION" == "2.6"* ]]; then
+    info "PyTorch 2.6.x detected - upgrading accelerate for compatibility..."
+    pip install --upgrade accelerate
+    success "Accelerate upgraded successfully"
+else
+    info "PyTorch version compatible with current accelerate"
 fi
 
 # Check if there's a checkpoint to resume from
