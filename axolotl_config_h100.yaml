@@ -129,8 +129,8 @@ eval_strategy: steps
 # ============================================================
 wandb_project: weatherman-lora
 wandb_entity:
-wandb_log_model: false
-wandb_watch: false
+wandb_log_model: "false"
+wandb_watch: "false"
 
 # ============================================================
 # HuggingFace Hub (optional)
