@@ -5,9 +5,10 @@
 #
 # This script:
 # 1. Verifies environment and data files
-# 2. Installs Axolotl if not present
-# 3. Launches training with automatic checkpoint resumption
-# 4. Provides monitoring instructions
+# 2. Installs/updates Axolotl and dependencies
+# 3. Ensures compatible package versions
+# 4. Launches training with automatic checkpoint resumption
+# 5. Provides monitoring instructions
 #
 # Usage: ./train_with_axolotl_h100.sh
 
@@ -17,6 +18,7 @@ set -e  # Exit on error
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Helper functions
@@ -33,7 +35,7 @@ warning() {
 }
 
 info() {
-    echo -e "$1"
+    echo -e "${BLUE}ℹ${NC} $1"
 }
 
 echo "============================================================"
@@ -58,27 +60,34 @@ if [ -z "$CONDA_DEFAULT_ENV" ] || [ "$CONDA_DEFAULT_ENV" != "weatherman-lora" ];
 fi
 
 # Verify Axolotl config exists
-if [ ! -f "axolotl_config_h100.yaml" ]; then
-    error "Axolotl config not found: axolotl_config_h100.yaml"
+CONFIG_FILE="axolotl_config_h100.yaml"
+if [ ! -f "$CONFIG_FILE" ]; then
+    error "Axolotl config not found: $CONFIG_FILE"
     exit 1
 fi
 
-success "Found Axolotl config: axolotl_config_h100.yaml"
+success "Found Axolotl config: $CONFIG_FILE"
 
 # Verify training data exists
-if [ ! -f "data/synthetic/final_train.jsonl" ]; then
-    error "Training data not found: data/synthetic/final_train.jsonl"
+TRAIN_DATA="data/synthetic/final_train_diverse.jsonl"
+VAL_DATA="data/synthetic/final_validation_diverse.jsonl"
+
+if [ ! -f "$TRAIN_DATA" ]; then
+    error "Training data not found: $TRAIN_DATA"
     info "Please run data generation scripts first"
     exit 1
 fi
 
-if [ ! -f "data/synthetic/final_validation.jsonl" ]; then
-    error "Validation data not found: data/synthetic/final_validation.jsonl"
+if [ ! -f "$VAL_DATA" ]; then
+    error "Validation data not found: $VAL_DATA"
     exit 1
 fi
 
-success "Training data verified (14,399 examples)"
-success "Validation data verified (1,601 examples)"
+TRAIN_COUNT=$(wc -l < "$TRAIN_DATA" 2>/dev/null || echo "0")
+VAL_COUNT=$(wc -l < "$VAL_DATA" 2>/dev/null || echo "0")
+
+success "Training data verified ($TRAIN_COUNT examples)"
+success "Validation data verified ($VAL_COUNT examples)"
 echo ""
 
 # Check if Axolotl is installed
@@ -89,97 +98,80 @@ if python -c "import axolotl" 2>/dev/null; then
     success "Axolotl installed (version: $AXOLOTL_VERSION)"
 else
     warning "Axolotl not found. Installing..."
-
-    # Clean up any existing broken installations
-    if python -c "import torch" 2>/dev/null; then
-        warning "Removing existing PyTorch installation..."
-        pip uninstall -y torch torchvision torchaudio 2>/dev/null || true
-    fi
-
+    
     # Install build dependencies first
     info "Installing build dependencies..."
-    pip install packaging ninja
+    pip install -U packaging==23.2 setuptools==75.8.0 wheel ninja
 
     # Step 1: Install PyTorch first (required for flash-attn compilation)
     info "Installing PyTorch with CUDA 12.1 support..."
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
-    # Check if pip reports successful installation
-    if pip show torch >/dev/null 2>&1; then
-        TORCH_VERSION=$(pip show torch | grep "Version:" | cut -d " " -f 2)
-        success "PyTorch $TORCH_VERSION installed (verified via pip)"
-
-        # Verify import works (use fresh Python process, no bytecode cache)
-        info "Verifying PyTorch can be imported..."
-        if python3 -B -c "import sys; import torch; print(f'Import successful: torch {torch.__version__}')" 2>&1; then
-            success "PyTorch import successful"
-
-            # Check CUDA availability (non-fatal)
-            if python3 -B -c "import torch; assert torch.cuda.is_available()" 2>/dev/null; then
-                GPU_NAME=$(python3 -B -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown")
-                success "CUDA is available: $GPU_NAME"
-            else
-                warning "CUDA check failed, but continuing (will verify during flash-attn build)..."
-            fi
+    # Verify PyTorch installation
+    if python -c "import torch; print(f'PyTorch {torch.__version__}')" 2>/dev/null; then
+        success "PyTorch installed"
+        
+        # Check CUDA availability
+        if python -c "import torch; assert torch.cuda.is_available()" 2>/dev/null; then
+            GPU_NAME=$(python -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown")
+            success "CUDA is available: $GPU_NAME"
         else
-            warning "PyTorch import had issues, but pip confirms it's installed - continuing..."
+            warning "CUDA check failed, but continuing..."
         fi
     else
-        error "Failed to install PyTorch"
+        error "Failed to verify PyTorch installation"
         exit 1
     fi
 
     # Step 2: Install flash-attn (now that torch is available)
     info "Installing Flash Attention (this may take 5-10 minutes)..."
-    pip install flash-attn==2.8.2 --no-build-isolation
+    pip install flash-attn==2.8.2 --no-build-isolation || {
+        warning "Flash Attention installation failed, continuing without it..."
+        warning "Training will be slower but should still work"
+    }
 
-    if python -c "import flash_attn" 2>/dev/null; then
-        success "Flash Attention installed successfully"
-    else
-        warning "Flash Attention installation may have failed, continuing anyway..."
-    fi
-
-    # Step 3: Install Axolotl with DeepSpeed (flash-attn already installed)
+    # Step 3: Install Axolotl with DeepSpeed
     info "Installing Axolotl with DeepSpeed (this may take several minutes)..."
-
-    # Install without flash-attn extra since we already have it
-    if pip install "axolotl[deepspeed]"; then
-        success "Axolotl pip install completed"
-    else
-        error "Failed to install Axolotl via pip"
-        info "Trying without extras..."
+    
+    # Install without flash-attn extra since we handle it separately
+    pip install "axolotl[deepspeed]" || {
+        warning "Failed to install with deepspeed extras, trying basic install..."
         pip install axolotl
-    fi
+    }
 
-    # Check if axolotl package is installed via pip
-    if pip show axolotl >/dev/null 2>&1; then
-        AXOLOTL_VER=$(pip show axolotl | grep "Version:" | cut -d " " -f 2)
-        success "Axolotl $AXOLOTL_VER package installed"
+    # Verify installation
+    if python -c "import axolotl" 2>/dev/null; then
+        AXOLOTL_VERSION=$(python -c "import axolotl; print(axolotl.__version__)" 2>/dev/null || echo "unknown")
+        success "Axolotl $AXOLOTL_VERSION installed"
     else
-        error "Axolotl package not found via pip show"
+        error "Failed to install Axolotl"
         exit 1
     fi
+fi
 
-    # Check final torch version
-    TORCH_VERSION=$(pip show torch | grep "Version:" | cut -d " " -f 2 2>/dev/null || echo "unknown")
-    info "Final PyTorch version: $TORCH_VERSION"
+echo ""
 
-    # Note: Axolotl may upgrade torch (e.g., 2.5.1 -> 2.6.0)
-    # If torch was upgraded, we need to ensure accelerate is compatible
-    if [[ "$TORCH_VERSION" == "2.6.0"* ]]; then
-        info "Torch 2.6.0 detected, upgrading accelerate for compatibility..."
-        pip install --upgrade accelerate
-    fi
+# Ensure compatible package versions
+info "Checking package compatibility..."
 
-    # Verify we can import axolotl (non-fatal due to Python caching)
-    info "Verifying Axolotl import..."
-    if python3 -B -c "import axolotl; print(f'Axolotl {axolotl.__version__} imported successfully')" 2>&1; then
-        success "Axolotl verification passed"
-    else
-        warning "Axolotl import check failed (likely Python module cache issue)"
-        info "Package is confirmed installed via pip. Training will use a fresh Python process."
-        info "Continuing to training phase..."
-    fi
+# Check and upgrade PEFT if needed (common compatibility issue)
+PEFT_VERSION=$(pip show peft 2>/dev/null | grep "Version:" | cut -d " " -f 2 || echo "not installed")
+if [ -n "$PEFT_VERSION" ]; then
+    info "PEFT version: $PEFT_VERSION"
+    # Upgrade to latest PEFT for compatibility
+    pip install --upgrade peft
+    success "PEFT upgraded to latest version"
+fi
+
+# Ensure accelerate is up to date
+pip install --upgrade accelerate
+ACCEL_VERSION=$(pip show accelerate 2>/dev/null | grep "Version:" | cut -d " " -f 2 || echo "unknown")
+success "Accelerate version: $ACCEL_VERSION"
+
+# Ensure bitsandbytes is installed for QLoRA
+if ! python -c "import bitsandbytes" 2>/dev/null; then
+    warning "bitsandbytes not found, installing..."
+    pip install bitsandbytes
 fi
 
 echo ""
@@ -196,40 +188,24 @@ else
     warning "nvidia-smi not found, but continuing anyway..."
 fi
 
-# Try to check via PyTorch (may fail due to cache, but that's okay)
-if python3 -B -c "import torch; assert torch.cuda.is_available(); print(f'✓ CUDA available: {torch.cuda.get_device_name(0)}')" 2>/dev/null; then
-    GPU_NAME=$(python3 -B -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown GPU")
+# Try to check via PyTorch
+if python -c "import torch; assert torch.cuda.is_available(); print(f'✓ CUDA available: {torch.cuda.get_device_name(0)}')" 2>/dev/null; then
+    GPU_NAME=$(python -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null || echo "Unknown GPU")
     success "PyTorch CUDA check passed: $GPU_NAME"
 else
-    warning "PyTorch CUDA check failed (likely module cache issue)"
-    info "GPU hardware is confirmed via nvidia-smi. Training will use fresh Python process."
+    warning "PyTorch CUDA check failed (may be module cache issue)"
+    info "GPU hardware confirmed via nvidia-smi. Training will use fresh Python process."
 fi
 
 echo ""
-
-# Ensure accelerate is compatible with current torch version
-info "Checking PyTorch version for accelerate compatibility..."
-TORCH_VERSION=$(pip show torch | grep "Version:" | cut -d " " -f 2 2>/dev/null || echo "unknown")
-info "Installed PyTorch version: $TORCH_VERSION"
-
-if [[ "$TORCH_VERSION" == "2.6.0"* ]] || [[ "$TORCH_VERSION" == "2.6"* ]]; then
-    info "PyTorch 2.6.x detected - upgrading accelerate for compatibility..."
-
-    # Use pip directly (conda env's python -m pip is broken)
-    pip install --upgrade --force-reinstall accelerate
-
-    # Verify the accelerate version
-    ACCEL_VERSION=$(pip show accelerate | grep "Version:" | cut -d " " -f 2 2>/dev/null || echo "unknown")
-    success "Accelerate upgraded to $ACCEL_VERSION"
-else
-    info "PyTorch version compatible with current accelerate"
-fi
 
 # Check if there's a checkpoint to resume from
 CHECKPOINT_DIR="adapters/weatherman-lora-axolotl-h100"
 
 if [ -d "$CHECKPOINT_DIR" ] && [ "$(ls -A $CHECKPOINT_DIR/checkpoint-* 2>/dev/null)" ]; then
     warning "Found existing checkpoints in $CHECKPOINT_DIR"
+    LATEST_CHECKPOINT=$(ls -td $CHECKPOINT_DIR/checkpoint-* 2>/dev/null | head -1)
+    info "Latest checkpoint: $LATEST_CHECKPOINT"
     info "Axolotl will automatically resume from the latest checkpoint"
     echo ""
 fi
@@ -239,10 +215,10 @@ info "============================================================"
 info "Launching Axolotl Training"
 info "============================================================"
 echo ""
-info "Configuration: axolotl_config_h100.yaml"
+info "Configuration: $CONFIG_FILE"
 info "Base Model: mistralai/Mistral-7B-Instruct-v0.3"
-info "Training Examples: 14,399"
-info "Validation Examples: 1,601"
+info "Training Examples: $TRAIN_COUNT"
+info "Validation Examples: $VAL_COUNT"
 info "Estimated Duration: 3-4 hours"
 info "Output Directory: $CHECKPOINT_DIR"
 echo ""
@@ -258,12 +234,18 @@ info "Log file: $LOG_FILE"
 info "Starting training..."
 echo ""
 
-# Launch Axolotl with accelerate
-# The 2>&1 | tee ensures we see output and save to log
-accelerate launch -m axolotl.cli.train axolotl_config_h100.yaml 2>&1 | tee "$LOG_FILE"
-
-# Capture exit code
-TRAIN_EXIT_CODE=${PIPESTATUS[0]}
+# Use axolotl CLI directly (simpler than accelerate launch)
+# This handles accelerate internally
+if command -v axolotl &> /dev/null; then
+    info "Using axolotl CLI command..."
+    axolotl train "$CONFIG_FILE" 2>&1 | tee "$LOG_FILE"
+    TRAIN_EXIT_CODE=${PIPESTATUS[0]}
+else
+    # Fallback to accelerate launch
+    info "Using accelerate launch (axolotl CLI not found)..."
+    accelerate launch -m axolotl.cli.train "$CONFIG_FILE" 2>&1 | tee "$LOG_FILE"
+    TRAIN_EXIT_CODE=${PIPESTATUS[0]}
+fi
 
 # Check if training completed successfully
 if [ $TRAIN_EXIT_CODE -eq 0 ]; then
@@ -276,16 +258,22 @@ if [ $TRAIN_EXIT_CODE -eq 0 ]; then
     echo ""
     echo "Next Steps:"
     echo "  1. Merge adapter with base model (optional):"
-    echo "     python -m axolotl.cli.merge axolotl_config_h100.yaml --lora-model-dir=$CHECKPOINT_DIR"
+    echo "     axolotl merge-lora $CONFIG_FILE --lora-model-dir=$CHECKPOINT_DIR"
     echo ""
     echo "  2. Test the model:"
-    echo "     python -m axolotl.cli.inference axolotl_config_h100.yaml --lora-model-dir=$CHECKPOINT_DIR"
+    echo "     axolotl inference $CONFIG_FILE --lora-model-dir=$CHECKPOINT_DIR --prompt=\"What's the weather in Boston?\""
     echo ""
     echo "  3. Deploy with Ollama or AnythingLLM (see docs/DEPLOYMENT.md)"
     echo ""
 else
     echo ""
-    error "Training failed. Check the log file for errors:"
+    error "Training failed with exit code: $TRAIN_EXIT_CODE"
+    error "Check the log file for errors:"
     info "  $LOG_FILE"
+    echo ""
+    info "Common issues:"
+    info "  - Out of memory: Reduce micro_batch_size or sequence_len in config"
+    info "  - Dataset format: Verify data/synthetic/final_train_diverse.jsonl format"
+    info "  - Package conflicts: Try 'pip install --upgrade peft accelerate bitsandbytes'"
     exit 1
 fi
