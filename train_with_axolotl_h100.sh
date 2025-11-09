@@ -90,16 +90,41 @@ if python -c "import axolotl" 2>/dev/null; then
 else
     warning "Axolotl not found. Installing..."
 
-    # Install PyTorch first (required for flash-attn compilation)
-    info "Installing PyTorch with CUDA support..."
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    # Detect if PyTorch is already installed
+    if python -c "import torch" 2>/dev/null; then
+        TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
+        success "PyTorch already installed (version: $TORCH_VERSION)"
+    else
+        # Detect CUDA version and install matching PyTorch
+        info "Detecting CUDA version..."
+        if command -v nvcc &> /dev/null; then
+            CUDA_VERSION=$(nvcc --version | grep "release" | sed 's/.*release \([0-9]\+\)\.\([0-9]\+\).*/\1\2/')
+            info "Detected CUDA $CUDA_VERSION"
+
+            # Install PyTorch with matching CUDA version
+            info "Installing PyTorch with CUDA $CUDA_VERSION support..."
+            pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu${CUDA_VERSION}
+        else
+            # Fallback to CUDA 12.1 if nvcc not found
+            warning "Could not detect CUDA version, using CUDA 12.1"
+            pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+        fi
+
+        if python -c "import torch" 2>/dev/null; then
+            TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
+            success "PyTorch installed (version: $TORCH_VERSION)"
+        else
+            error "Failed to install PyTorch"
+            exit 1
+        fi
+    fi
 
     # Install build dependencies
     info "Installing build dependencies..."
     pip install packaging ninja
 
     # Install flash-attn separately (requires torch to be installed first)
-    info "Installing Flash Attention (this may take a few minutes)..."
+    info "Installing Flash Attention (this may take 5-10 minutes)..."
     pip install flash-attn --no-build-isolation
 
     # Install Axolotl with DeepSpeed
@@ -111,7 +136,6 @@ else
     else
         error "Failed to install Axolotl"
         info "Try manual installation:"
-        info "  pip install torch --index-url https://download.pytorch.org/whl/cu121"
         info "  pip install flash-attn --no-build-isolation"
         info "  pip install axolotl[deepspeed]"
         exit 1
