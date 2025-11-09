@@ -95,16 +95,16 @@ else
     warning "Axolotl not found. Installing..."
 
     # Install Axolotl (without Flash Attention for MPS)
-    info "Installing axolotl-ai..."
+    info "Installing axolotl with proper dependencies..."
     pip3 install packaging ninja
-    pip3 install axolotl
+    pip3 install "axolotl==0.5.2" --force-reinstall
 
     if python3 -c "import axolotl" 2>/dev/null; then
         success "Axolotl installed successfully"
     else
         error "Failed to install Axolotl"
         info "Try manual installation:"
-        info "  pip3 install axolotl"
+        info "  pip3 install axolotl==0.5.2"
         exit 1
     fi
 fi
@@ -183,7 +183,7 @@ echo ""
 
 # Launch Axolotl with accelerate
 # The 2>&1 | tee ensures we see output and save to log
-accelerate launch -m axolotl.cli.train axolotl_config_m4.yaml 2>&1 | tee "$LOG_FILE"
+python3 -m accelerate.commands.launch -m axolotl.cli.train axolotl_config_m4.yaml 2>&1 | tee "$LOG_FILE"
 
 # Check if training completed successfully
 if [ $? -eq 0 ]; then

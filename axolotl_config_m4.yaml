@@ -62,10 +62,10 @@ lora_fan_in_fan_out: false
 # ============================================================
 # Quantization (QLoRA)
 # ============================================================
-load_in_4bit: true
-bnb_4bit_quant_type: nf4
-bnb_4bit_compute_dtype: float16  # MPS uses float16, not bfloat16
-bnb_4bit_use_double_quant: true
+# DISABLED: bitsandbytes not available on macOS
+# Using full precision LoRA instead
+load_in_4bit: false
+load_in_8bit: false
 
 # ============================================================
 # Sequence and Packing Configuration
@@ -77,8 +77,9 @@ pad_to_sequence_len: true
 # ============================================================
 # Training Hyperparameters (M4 Optimized)
 # ============================================================
+# Using full precision (no quantization) - requires smaller batch
 micro_batch_size: 1  # Small batch for MPS memory
-gradient_accumulation_steps: 16  # Higher accumulation to compensate
+gradient_accumulation_steps: 32  # Higher accumulation without quantization
 num_epochs: 3
 learning_rate: 0.0002
 lr_scheduler: cosine
