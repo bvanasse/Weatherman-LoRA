@@ -179,9 +179,23 @@ if [ "$PIP_AVAILABLE" = false ]; then
     fi
 fi
 
-PIP_VERSION=$($PIP_CMD --version 2>&1)
+# Get pip version (non-fatal)
+PIP_VERSION=$($PIP_CMD --version 2>&1 || echo "unknown")
+if echo "$PIP_VERSION" | grep -q "No module named pip.__main__"; then
+    warning "pip is installed but broken (missing __main__)"
+    info "Reinstalling pip..."
+    $PYTHON_CMD -m ensurepip --upgrade 2>/dev/null || true
+    conda install -y pip 2>/dev/null || {
+        error "Could not fix pip. Please manually reinstall:"
+        error "  conda install -c conda-forge pip"
+        exit 1
+    }
+    PIP_VERSION=$($PIP_CMD --version 2>&1 || echo "reinstalled")
+fi
+
 info "Using pip: $PIP_CMD"
 success "Pip version: $PIP_VERSION"
+echo ""
 
 # Check if Axolotl is installed
 info "Checking Axolotl installation..."
