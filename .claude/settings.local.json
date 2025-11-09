@@ -65,7 +65,11 @@
       "Bash(exit 1)",
       "Bash(else)",
       "Bash(awk:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(if [ -f \"data/synthetic/final_train_diverse.jsonl\" ])",
+      "Bash(then head -2 data/synthetic/final_train_diverse.jsonl)",
+      "Bash(else echo \"File not found\")",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []

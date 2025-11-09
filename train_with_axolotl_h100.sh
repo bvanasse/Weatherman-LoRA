@@ -280,9 +280,9 @@ if [ -d "$CHECKPOINT_DIR" ] && [ "$(ls -A $CHECKPOINT_DIR/checkpoint-* 2>/dev/nu
     echo ""
 fi
 
-# Launch training
+# Launch training in persistent session
 info "============================================================"
-info "Launching Axolotl Training"
+info "Launching Axolotl Training in Persistent Session"
 info "============================================================"
 echo ""
 info "Configuration: $CONFIG_FILE"
@@ -301,50 +301,185 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="logs/axolotl_training_h100_${TIMESTAMP}.log"
 
 info "Log file: $LOG_FILE"
-info "Starting training..."
 echo ""
 
-# Use axolotl CLI directly (simpler than accelerate launch)
-# This handles accelerate internally
+# Determine training command
 if command -v axolotl &> /dev/null; then
-    info "Using axolotl CLI command..."
-    axolotl train "$CONFIG_FILE" 2>&1 | tee "$LOG_FILE"
-    TRAIN_EXIT_CODE=${PIPESTATUS[0]}
+    TRAIN_CMD="axolotl train $CONFIG_FILE"
+    info "Using axolotl CLI command"
 else
-    # Fallback to accelerate launch with explicit Python
-    info "Using accelerate launch (axolotl CLI not found)..."
-    info "Command: accelerate launch -m axolotl.cli.train $CONFIG_FILE"
-    accelerate launch -m axolotl.cli.train "$CONFIG_FILE" 2>&1 | tee "$LOG_FILE"
-    TRAIN_EXIT_CODE=${PIPESTATUS[0]}
+    TRAIN_CMD="accelerate launch -m axolotl.cli.train $CONFIG_FILE"
+    info "Using accelerate launch (axolotl CLI not found)"
 fi
 
-# Check if training completed successfully
-if [ $TRAIN_EXIT_CODE -eq 0 ]; then
-    echo ""
-    echo "============================================================"
-    success "Training Completed Successfully!"
-    echo "============================================================"
-    echo ""
-    echo "Adapter Location: $CHECKPOINT_DIR"
-    echo ""
-    echo "Next Steps:"
-    echo "  1. Merge adapter with base model (optional):"
-    echo "     axolotl merge-lora $CONFIG_FILE --lora-model-dir=$CHECKPOINT_DIR"
-    echo ""
-    echo "  2. Test the model:"
-    echo "     axolotl inference $CONFIG_FILE --lora-model-dir=$CHECKPOINT_DIR --prompt=\"What's the weather in Boston?\""
-    echo ""
-    echo "  3. Deploy with Ollama or AnythingLLM (see docs/DEPLOYMENT.md)"
-    echo ""
+# Launch in persistent session (tmux or nohup)
+TMUX_SESSION="weatherman-axolotl-training"
+
+# Try to use tmux first for best experience
+if command -v tmux &> /dev/null; then
+    # Test if tmux works (check for library issues)
+    if tmux -V &> /dev/null; then
+        info "Using tmux for session persistence..."
+
+        # Check if tmux session already exists
+        if tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
+            warning "Tmux session '$TMUX_SESSION' already exists"
+            info "To view existing session: tmux attach -t $TMUX_SESSION"
+            info "To kill existing session: tmux kill-session -t $TMUX_SESSION"
+            echo ""
+            read -p "Kill existing session and create new one? (y/N): " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                tmux kill-session -t "$TMUX_SESSION"
+                success "Killed existing session"
+            else
+                error "Cannot proceed with existing session active"
+                exit 1
+            fi
+        fi
+
+        # Create tmux session and launch training
+        tmux new-session -d -s "$TMUX_SESSION" bash
+        tmux send-keys -t "$TMUX_SESSION" "eval \"\$(conda shell.bash hook)\"" C-m
+        tmux send-keys -t "$TMUX_SESSION" "conda activate weatherman-lora" C-m
+        sleep 2
+        tmux send-keys -t "$TMUX_SESSION" "cd $(pwd)" C-m
+        tmux send-keys -t "$TMUX_SESSION" "$TRAIN_CMD 2>&1 | tee $LOG_FILE" C-m
+
+        success "Training launched in tmux session: $TMUX_SESSION"
+        USING_TMUX=true
+    else
+        warning "tmux has library compatibility issues, trying conda installation..."
+
+        # Try to install tmux via conda
+        if conda install -y -c conda-forge tmux &> /dev/null; then
+            success "Installed tmux via conda"
+
+            # Test if conda-installed tmux works
+            if tmux -V &> /dev/null; then
+                info "Conda tmux works, launching training..."
+
+                tmux new-session -d -s "$TMUX_SESSION" bash
+                tmux send-keys -t "$TMUX_SESSION" "eval \"\$(conda shell.bash hook)\"" C-m
+                tmux send-keys -t "$TMUX_SESSION" "conda activate weatherman-lora" C-m
+                sleep 2
+                tmux send-keys -t "$TMUX_SESSION" "cd $(pwd)" C-m
+                tmux send-keys -t "$TMUX_SESSION" "$TRAIN_CMD 2>&1 | tee $LOG_FILE" C-m
+
+                success "Training launched in tmux session: $TMUX_SESSION"
+                USING_TMUX=true
+            else
+                warning "Conda tmux still has issues, falling back to nohup..."
+                USING_TMUX=false
+            fi
+        else
+            warning "Could not install tmux via conda, falling back to nohup..."
+            USING_TMUX=false
+        fi
+    fi
 else
-    echo ""
-    error "Training failed with exit code: $TRAIN_EXIT_CODE"
-    error "Check the log file for errors:"
-    info "  $LOG_FILE"
-    echo ""
-    info "Common issues:"
-    info "  - Out of memory: Reduce micro_batch_size or sequence_len in config"
-    info "  - Dataset format: Verify data/synthetic/final_train_diverse.jsonl format"
-    info "  - Package conflicts: Try 'pip install --upgrade peft accelerate bitsandbytes'"
-    exit 1
+    warning "tmux not found, using nohup for background execution..."
+    USING_TMUX=false
 fi
+
+# Fallback to nohup if tmux unavailable
+if [ "$USING_TMUX" != "true" ]; then
+    info "Using nohup for persistent background execution..."
+
+    # Create wrapper script to activate conda and run training
+    WRAPPER_SCRIPT="/tmp/weatherman_axolotl_training.sh"
+    cat > "$WRAPPER_SCRIPT" <<WRAPPER_EOF
+#!/bin/bash
+eval "\$(conda shell.bash hook)"
+conda activate weatherman-lora
+cd $(pwd)
+$TRAIN_CMD
+WRAPPER_EOF
+    chmod +x "$WRAPPER_SCRIPT"
+
+    # Launch with nohup
+    nohup bash "$WRAPPER_SCRIPT" > "$LOG_FILE" 2>&1 &
+    TRAINING_PID=$!
+
+    # Save PID for monitoring
+    echo $TRAINING_PID > /tmp/weatherman_axolotl_training.pid
+
+    success "Training launched with nohup (PID: $TRAINING_PID)"
+fi
+
+echo ""
+info "Waiting for training to initialize (30 seconds)..."
+sleep 30
+
+# Check for immediate errors
+if [ -f "$LOG_FILE" ]; then
+    ERROR_COUNT=$(grep -i -E "ERROR|RuntimeError|CUDA out of memory|OutOfMemoryError|Traceback" "$LOG_FILE" | wc -l)
+
+    if [ "$ERROR_COUNT" -gt 0 ]; then
+        error "Detected $ERROR_COUNT error(s) in initial log output"
+        info "Recent errors:"
+        grep -i -E "ERROR|RuntimeError|CUDA out of memory|OutOfMemoryError|Traceback" "$LOG_FILE" | tail -10
+        echo ""
+        error "Training appears to have encountered errors during initialization"
+        info "Full log: tail -f $LOG_FILE"
+        if [ "$USING_TMUX" = "true" ]; then
+            info "Attach to session: tmux attach -t $TMUX_SESSION"
+        fi
+        exit 1
+    fi
+
+    # Check if training started
+    if grep -q -E "Starting training|Epoch|Step|Loading" "$LOG_FILE"; then
+        success "Training initialized successfully"
+    else
+        warning "Training may still be initializing. Monitor the log file."
+    fi
+else
+    warning "Log file not created yet. Training may still be starting."
+fi
+
+echo ""
+echo "============================================================"
+success "Training Session Active"
+echo "============================================================"
+echo ""
+
+if [ "$USING_TMUX" = "true" ]; then
+    echo "Session Type: tmux"
+    echo "Tmux Session: $TMUX_SESSION"
+    echo ""
+    echo "Monitoring Commands:"
+    echo "  Attach to session:     tmux attach -t $TMUX_SESSION"
+    echo "  Detach from session:   Ctrl+B, then D"
+    echo "  View log file:         tail -f $LOG_FILE"
+    echo "  Check GPU usage:       nvidia-smi"
+    echo "  List sessions:         tmux ls"
+    echo ""
+    echo "To Stop Training:"
+    echo "  Kill session:          tmux kill-session -t $TMUX_SESSION"
+else
+    echo "Session Type: nohup (background process)"
+    if [ -f "/tmp/weatherman_axolotl_training.pid" ]; then
+        echo "Process PID: $(cat /tmp/weatherman_axolotl_training.pid)"
+    fi
+    echo ""
+    echo "Monitoring Commands:"
+    echo "  View log file:         tail -f $LOG_FILE"
+    echo "  Check process:         ps -p \$(cat /tmp/weatherman_axolotl_training.pid)"
+    echo "  Check GPU usage:       nvidia-smi"
+    echo ""
+    echo "To Stop Training:"
+    echo "  Kill process:          kill \$(cat /tmp/weatherman_axolotl_training.pid)"
+fi
+
+echo ""
+echo "Output Location: $CHECKPOINT_DIR"
+echo "Estimated Duration: 3-4 hours"
+echo ""
+info "Training will continue even if you disconnect from SSH"
+info "You can safely close this terminal"
+echo ""
+echo "After Training Completes:"
+echo "  1. Adapter saved to: $CHECKPOINT_DIR/"
+echo "  2. See deployment guide: docs/M4_DEPLOYMENT.md"
+echo ""
