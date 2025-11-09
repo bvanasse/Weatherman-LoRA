@@ -90,17 +90,30 @@ if python -c "import axolotl" 2>/dev/null; then
 else
     warning "Axolotl not found. Installing..."
 
-    # Install Axolotl with Flash Attention support
-    info "Installing axolotl-ai with Flash Attention..."
+    # Install PyTorch first (required for flash-attn compilation)
+    info "Installing PyTorch with CUDA support..."
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+    # Install build dependencies
+    info "Installing build dependencies..."
     pip install packaging ninja
-    pip install axolotl[flash-attn,deepspeed]
+
+    # Install flash-attn separately (requires torch to be installed first)
+    info "Installing Flash Attention (this may take a few minutes)..."
+    pip install flash-attn --no-build-isolation
+
+    # Install Axolotl with DeepSpeed
+    info "Installing Axolotl..."
+    pip install axolotl[deepspeed]
 
     if python -c "import axolotl" 2>/dev/null; then
         success "Axolotl installed successfully"
     else
         error "Failed to install Axolotl"
         info "Try manual installation:"
-        info "  pip install axolotl[flash-attn]"
+        info "  pip install torch --index-url https://download.pytorch.org/whl/cu121"
+        info "  pip install flash-attn --no-build-isolation"
+        info "  pip install axolotl[deepspeed]"
         exit 1
     fi
 fi
