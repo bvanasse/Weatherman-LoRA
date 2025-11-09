@@ -165,8 +165,11 @@ else
     info "Final PyTorch version: $TORCH_VERSION"
 
     # Note: Axolotl may upgrade torch (e.g., 2.5.1 -> 2.6.0)
-    # This is expected and we don't downgrade it as it would break Axolotl
-    # Any version warnings from pip can be ignored - the packages are compatible
+    # If torch was upgraded, we need to ensure accelerate is compatible
+    if [[ "$TORCH_VERSION" == "2.6.0"* ]]; then
+        info "Torch 2.6.0 detected, upgrading accelerate for compatibility..."
+        pip install --upgrade accelerate
+    fi
 
     # Verify we can import axolotl (non-fatal due to Python caching)
     info "Verifying Axolotl import..."
@@ -241,8 +244,11 @@ echo ""
 # The 2>&1 | tee ensures we see output and save to log
 accelerate launch -m axolotl.cli.train axolotl_config_h100.yaml 2>&1 | tee "$LOG_FILE"
 
+# Capture exit code
+TRAIN_EXIT_CODE=${PIPESTATUS[0]}
+
 # Check if training completed successfully
-if [ $? -eq 0 ]; then
+if [ $TRAIN_EXIT_CODE -eq 0 ]; then
     echo ""
     echo "============================================================"
     success "Training Completed Successfully!"
