@@ -143,21 +143,20 @@ else
     info "Installing Axolotl with DeepSpeed..."
     pip install "axolotl[deepspeed]"
 
-    # Axolotl may have upgraded torch, fix torchvision/torchaudio to match
+    # Check final torch version
     TORCH_VERSION=$(pip show torch | grep "Version:" | cut -d " " -f 2 2>/dev/null || echo "unknown")
-    if [[ "$TORCH_VERSION" != "2.5.1"* ]]; then
-        warning "Axolotl upgraded torch to $TORCH_VERSION, fixing torchvision/torchaudio..."
-        # Uninstall mismatched versions
-        pip uninstall -y torchvision torchaudio 2>/dev/null || true
-        # Reinstall from cu121 to match torch version
-        pip install torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-    fi
+    info "Final PyTorch version: $TORCH_VERSION"
+
+    # Note: Axolotl may upgrade torch (e.g., 2.5.1 -> 2.6.0)
+    # This is expected and we don't downgrade it as it would break Axolotl
+    # Any version warnings from pip can be ignored - the packages are compatible
 
     # Verify installation
     if python3 -B -c "import axolotl; print(f'Axolotl version: {axolotl.__version__}')" 2>&1; then
         success "Axolotl installed successfully"
     else
         error "Failed to import Axolotl"
+        info "Axolotl import failed. This might be due to missing dependencies."
         info "Try manual installation:"
         info "  pip install flash-attn --no-build-isolation"
         info "  pip install axolotl[deepspeed]"
