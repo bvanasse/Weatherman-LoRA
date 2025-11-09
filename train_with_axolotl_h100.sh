@@ -90,11 +90,14 @@ if python -c "import axolotl" 2>/dev/null; then
 else
     warning "Axolotl not found. Installing..."
 
-    # Detect if PyTorch is already installed
-    if python -c "import torch" 2>/dev/null; then
+    # Detect if PyTorch is already installed and functional
+    if python -c "import torch; print(torch.__version__); assert torch.cuda.is_available()" 2>/dev/null; then
         TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
         success "PyTorch already installed (version: $TORCH_VERSION)"
     else
+        if python -c "import torch" 2>/dev/null; then
+            warning "PyTorch found but not functional, reinstalling..."
+        fi
         # Detect CUDA version and install matching PyTorch
         info "Detecting CUDA version..."
         if command -v nvcc &> /dev/null; then
