@@ -100,33 +100,33 @@ else
     info "Installing build dependencies..."
     pip install packaging ninja
 
-    # Install Axolotl which will pull in compatible torch version
-    # Use --no-cache-dir to ensure we get fresh packages
-    info "Installing Axolotl with dependencies (this may take several minutes)..."
-    info "Axolotl will install its required PyTorch version..."
-    pip install --no-cache-dir "axolotl[flash-attn,deepspeed]"
+    # Step 1: Install PyTorch first (required for flash-attn compilation)
+    info "Installing PyTorch with CUDA 12.1 support..."
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
     # Verify PyTorch installation
     if python -c "import torch; print(torch.__version__); assert torch.cuda.is_available()" 2>/dev/null; then
         TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
         success "PyTorch $TORCH_VERSION installed successfully"
     else
-        error "PyTorch installation failed or CUDA not available"
-        info "Trying alternative installation method..."
-
-        # Fallback: Install PyTorch manually with latest stable
-        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-        pip install flash-attn --no-build-isolation
-        pip install axolotl[deepspeed]
-
-        if python -c "import torch; assert torch.cuda.is_available()" 2>/dev/null; then
-            TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
-            success "PyTorch $TORCH_VERSION installed via fallback method"
-        else
-            error "Failed to install PyTorch with CUDA support"
-            exit 1
-        fi
+        error "Failed to install PyTorch with CUDA support"
+        info "Check that CUDA is properly installed and accessible"
+        exit 1
     fi
+
+    # Step 2: Install flash-attn (now that torch is available)
+    info "Installing Flash Attention (this may take 5-10 minutes)..."
+    pip install flash-attn==2.8.2 --no-build-isolation
+
+    if python -c "import flash_attn" 2>/dev/null; then
+        success "Flash Attention installed successfully"
+    else
+        warning "Flash Attention installation may have failed, continuing anyway..."
+    fi
+
+    # Step 3: Install Axolotl with DeepSpeed (flash-attn already installed)
+    info "Installing Axolotl with DeepSpeed..."
+    pip install "axolotl[deepspeed]"
 
     if python -c "import axolotl" 2>/dev/null; then
         success "Axolotl installed successfully"
