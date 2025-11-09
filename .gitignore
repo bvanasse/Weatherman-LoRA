@@ -30,6 +30,8 @@ data/synthetic/*
 !data/synthetic/final_validation.jsonl
 !data/synthetic/final_train_diverse.jsonl
 !data/synthetic/final_validation_diverse.jsonl
+!data/synthetic/final_train_diverse_fixed.jsonl
+!data/synthetic/final_validation_diverse_fixed.jsonl
 !data/synthetic/merge_metadata.json
 
 # Model files (large files)
