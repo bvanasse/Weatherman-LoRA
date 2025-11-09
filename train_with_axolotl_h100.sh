@@ -90,34 +90,31 @@ if python -c "import axolotl" 2>/dev/null; then
 else
     warning "Axolotl not found. Installing..."
 
-    # Detect if PyTorch is already installed and functional
-    if python -c "import torch; print(torch.__version__); assert torch.cuda.is_available()" 2>/dev/null; then
+    # Check if PyTorch 2.6.0 is installed (required by Axolotl)
+    TORCH_INSTALLED=false
+    if python -c "import torch; assert torch.__version__.startswith('2.6.'); assert torch.cuda.is_available()" 2>/dev/null; then
         TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
-        success "PyTorch already installed (version: $TORCH_VERSION)"
-    else
-        if python -c "import torch" 2>/dev/null; then
-            warning "PyTorch found but not functional, reinstalling..."
-        fi
-        # Detect CUDA version and install matching PyTorch
-        info "Detecting CUDA version..."
-        if command -v nvcc &> /dev/null; then
-            CUDA_VERSION=$(nvcc --version | grep "release" | sed 's/.*release \([0-9]\+\)\.\([0-9]\+\).*/\1\2/')
-            info "Detected CUDA $CUDA_VERSION"
+        success "PyTorch $TORCH_VERSION already installed (compatible with Axolotl)"
+        TORCH_INSTALLED=true
+    fi
 
-            # Install PyTorch with matching CUDA version
-            info "Installing PyTorch with CUDA $CUDA_VERSION support..."
-            pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu${CUDA_VERSION}
-        else
-            # Fallback to CUDA 12.1 if nvcc not found
-            warning "Could not detect CUDA version, using CUDA 12.1"
-            pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    if [ "$TORCH_INSTALLED" = false ]; then
+        if python -c "import torch" 2>/dev/null; then
+            warning "Incompatible PyTorch found, reinstalling..."
+            pip uninstall -y torch torchvision torchaudio 2>/dev/null || true
         fi
 
-        if python -c "import torch" 2>/dev/null; then
+        # Install PyTorch 2.6.0 (required by Axolotl 0.12.2)
+        # Use CUDA 12.1 build which is compatible with CUDA 12.x
+        info "Installing PyTorch 2.6.0 with CUDA 12.1 (required by Axolotl)..."
+        pip install torch==2.6.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+        if python -c "import torch; print(torch.__version__); assert torch.cuda.is_available()" 2>/dev/null; then
             TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
-            success "PyTorch installed (version: $TORCH_VERSION)"
+            success "PyTorch $TORCH_VERSION installed successfully"
         else
-            error "Failed to install PyTorch"
+            error "Failed to install PyTorch 2.6.0"
+            info "Check that CUDA is properly installed and accessible"
             exit 1
         fi
     fi
