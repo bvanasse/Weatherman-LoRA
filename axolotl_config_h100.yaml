@@ -161,8 +161,8 @@ device_map: auto
 # DeepSpeed (optional, for multi-GPU)
 # deepspeed: deepspeed_configs/zero2.json
 
-# Early stopping (optional)
-early_stopping_patience: 3
+# Early stopping (optional) - disabled since eval is disabled
+# early_stopping_patience: 3
 
 # Resume from checkpoint (leave empty/null for new training)
 # resume_from_checkpoint:
