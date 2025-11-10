@@ -15,6 +15,7 @@ build/
 .venv-local/
 .venv-remote/
 venv/
+venv-inference/
 ENV/
 env/
 
