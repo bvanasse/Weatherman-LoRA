@@ -71,15 +71,15 @@ bnb_4bit_use_double_quant: true
 # ============================================================
 # Sequence and Packing Configuration
 # ============================================================
-sequence_len: 4096  # H100 with Flash Attention can handle 4096
-sample_packing: false  # Disable for tool calling to preserve conversation boundaries
+sequence_len: 2048  # Reduced from 4096 - max input is only 1012 tokens
+sample_packing: true  # CRITICAL for speed - packs multiple samples per sequence
 pad_to_sequence_len: true
 
 # ============================================================
 # Training Hyperparameters
 # ============================================================
-micro_batch_size: 4
-gradient_accumulation_steps: 4
+micro_batch_size: 8  # Increased from 4 - H100 can handle it with QLoRA
+gradient_accumulation_steps: 2  # Reduced to maintain effective batch size of 16
 num_epochs: 3
 learning_rate: 0.0002
 lr_scheduler: cosine
