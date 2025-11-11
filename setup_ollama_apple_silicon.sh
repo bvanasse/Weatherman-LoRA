@@ -55,7 +55,8 @@ echo "✓ Ollama service is running"
 echo ""
 echo "Step 1: Setting up Python environment for model merging..."
 if [ ! -d "venv-merge" ]; then
-    python3 -m venv venv-merge
+    echo "Creating ARM64 virtual environment..."
+    arch -arm64 python3 -m venv venv-merge
 fi
 source venv-merge/bin/activate
 
@@ -69,7 +70,7 @@ echo ""
 echo "Step 2: Merging LoRA adapter with base model..."
 echo "⏳ This will download ~14GB and may take 10-15 minutes..."
 echo ""
-python merge_for_ollama.py
+arch -arm64 python merge_for_ollama.py
 
 # Step 3: Check if llama.cpp exists
 echo ""
@@ -93,7 +94,7 @@ echo ""
 echo "Converting merged model to GGUF format..."
 echo "⏳ Using Q4_K_M quantization (optimal for Apple Silicon)"
 echo "This may take 5-10 minutes..."
-python llama.cpp/convert.py merged_model \
+arch -arm64 python llama.cpp/convert.py merged_model \
     --outfile weatherman-lora.gguf \
     --outtype q4_K_M
 
