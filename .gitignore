@@ -16,6 +16,7 @@ build/
 .venv-remote/
 venv/
 venv-inference/
+venv-merge/
 ENV/
 env/
 
@@ -42,6 +43,8 @@ models/*
 
 # Adapter checkpoints
 adapters/*
+!adapters/weatherman-lora-axolotl-h100/*
+!adapters/weatherman-lora-axolotl-h100/
 !adapters/.gitkeep
 !adapters/README.md
 
@@ -75,3 +78,8 @@ huggingface/
 # Environment files
 .env
 .env.local
+
+# Ollama / GGUF conversion artifacts
+merged_model/
+*.gguf
+llama.cpp/
