@@ -62,7 +62,7 @@ source venv-merge/bin/activate
 # Install dependencies (no bitsandbytes for Mac)
 echo "Installing dependencies (this may take a few minutes)..."
 pip install -q --upgrade pip
-pip install -q torch transformers peft accelerate
+pip install -q torch transformers peft accelerate sentencepiece protobuf
 
 # Step 2: Merge LoRA adapter
 echo ""
